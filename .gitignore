@@ -1,0 +1,28 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+
+# Local virtual environments
+.venv/
+venv/
+
+# Large/generated video job outputs
+01-source/
+02-transcripts/
+03-translation/
+04-subtitle-ass/
+05-output/
+06-review/
+07-cover/
+08-description/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.wav
+*.mp3
+*.aac
+
+# Keep packaged skill artifacts versionable
+!dist/
+!dist/*.skill

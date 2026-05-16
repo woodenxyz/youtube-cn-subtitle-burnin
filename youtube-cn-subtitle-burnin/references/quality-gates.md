@@ -57,8 +57,8 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | Subtitle too small | Looks acceptable on desktop but tiring on phone-sized playback | Require preview screenshots and adjust size/outline before full burn |
 | Preview without subtitles | One-minute preview shows no subtitle, so user cannot judge style | Extend duration or move preview to a subtitle-bearing window before asking for approval |
 | Bottom UI occlusion | Subtitle covers input fields, controls, code, chart labels, or lower-third text | Move subtitle upward, reduce line count, or use a safer region for that segment |
-| YouTube translated caption rate limit | Chinese timedtext download returns HTTP 429 or repeated subtitle download errors | Stop repeated retries, use English captions, translate with Codex, and record the source limitation |
-| External translation detour | Workflow tries APIs/tools even though current Codex can translate | Use current Codex as the default translator; external APIs/tools are fallback only |
+| YouTube translated caption rate limit | Chinese timedtext download returns HTTP 429 or repeated subtitle download errors | Stop repeated retries, use English captions, translate with the current agent model, and record the source limitation |
+| External translation detour | Workflow tries APIs/tools even though the current agent model can translate | Use the current agent model as the default translator; external APIs/tools are fallback only |
 | Translation batch drift | Long video translation misses ids, reorders subtitles, or cannot resume after interruption | Use numbered JSON batches, verify all ids, and save cache after every batch |
 | Unstable cue ids | Cleaned captions are resegmented, then translation cache is matched against position-only ids | Keep stable `id` values in cue JSON and use those ids for batching/cache application |
 | Hard character wrapping | Line break cuts product names, English phrases, or Chinese meaning chunks | Generate ASS with semantic wrapping and check line breaks from preview frames |

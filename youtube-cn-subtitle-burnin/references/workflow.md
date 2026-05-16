@@ -27,7 +27,7 @@ python3 scripts/extract_youtube_description.py 01-source/<video-id>.info.json \
 python3 scripts/download_youtube_thumbnail.py "<youtube-url>" --out-dir 01-source --format jpg
 ```
 
-If the original description is not Chinese, translate it with the current Codex model and save a Chinese version such as `08-description/<video-id>.description.zh.md`. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs.
+If the original description is not Chinese, translate it with the current agent model and save a Chinese version such as `08-description/<video-id>.description.zh.md`. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs.
 
 Keep the original thumbnail even if the user does not need cover editing. If the user wants a Chinese-subtitle cover, enter Cover Processing Mode below, create the edited cover under `07-cover/`, and keep the original and edited files listed in the review.
 
@@ -57,7 +57,7 @@ Prefer subtitle sources in this order:
 
 Save the raw source and never overwrite it. Mark automatic captions clearly because they often contain overlap, duplicated fragments, bad casing, and weak sentence boundaries.
 
-If YouTube translated Chinese captions fail with rate limits or repeated download errors, do not keep retrying the same endpoint. Record the failure, use English captions as the source, and translate with Codex.
+If YouTube translated Chinese captions fail with rate limits or repeated download errors, do not keep retrying the same endpoint. Record the failure, use English captions as the source, and translate with the current agent model.
 
 Clean the English baseline only enough to make it traceable and useful: remove noise, fix obvious ASR errors, and repair broken sentence boundaries. Do not rewrite the speaker's argument.
 
@@ -71,7 +71,7 @@ python3 scripts/prepare_youtube_transcript.py 01-source/<video-id>.en.srt \
 
 ## 3. Chinese Translation
 
-Default to translating with the current Codex model. External LLM APIs and command-line translation tools are fallbacks only.
+Default to translating with the current agent model. External LLM APIs and command-line translation tools are fallbacks only.
 
 Translate in numbered batches with nearby context. Maintain a glossary for names, products, commands, and technical terms. Write natural Simplified Chinese for watching, not article prose.
 
@@ -86,16 +86,16 @@ Use a cache file such as `03-translation/<video-id>.zh.cache.json`:
 ]
 ```
 
-Generate pending batches for Codex self-translation:
+Generate pending batches for agent-model translation:
 
 ```bash
-python3 scripts/make_codex_translation_batches.py 02-transcripts/<video-id>.en.cues.json \
-  --out-dir 03-translation/codex-batches \
+python3 scripts/make_translation_batches.py 02-transcripts/<video-id>.en.cues.json \
+  --out-dir 03-translation/translation-batches \
   --cache 03-translation/<video-id>.zh.cache.json \
   --max-chars 6000
 ```
 
-For each batch, Codex must return JSON only, keep every `id`, and preserve product names such as Codex, ChatGPT, Claude, Claude Code, GitHub, OpenAI, Chronicle, Computer Use, and MCP. After each batch, append or update the cache before continuing. For long videos, reduce `--batch-size` or `--max-chars` before translating if a batch looks too large to check reliably.
+For each batch, the agent model must return JSON only, keep every `id`, and preserve product names such as Codex, ChatGPT, Claude, Claude Code, GitHub, OpenAI, Chronicle, Computer Use, and MCP. After each batch, append or update the cache before continuing. For long videos, reduce `--batch-size` or `--max-chars` before translating if a batch looks too large to check reliably.
 
 Write the checked cache back to SRT:
 

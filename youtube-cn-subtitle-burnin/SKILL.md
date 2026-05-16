@@ -27,16 +27,16 @@ Always load:
 - Do not deliver a video until subtitle timing, sentence completeness, video streams, and sample screenshots have been checked.
 - Do not treat the burned MP4 as the only deliverable. The final Chinese subtitle files must be kept and listed for delivery.
 - Download and retain the original video thumbnail when downloading the video.
-- Extract and retain the original YouTube description. If the description is not Chinese, translate it into Chinese with the current Codex model and preserve proper nouns, product names, URLs, and chapter timestamps.
+- Extract and retain the original YouTube description. If the description is not Chinese, translate it into Chinese with the current agent model and preserve proper nouns, product names, URLs, and chapter timestamps.
 - Ask whether the video thumbnail/cover should be prepared for the Chinese-subtitled version unless the user already specified a cover preference. If the user asks for direct end-to-end completion and did not mention cover work, keep the original thumbnail only and record `cover edit: not requested`.
 - Do not burn the whole video with an unreviewed subtitle style. First create a subtitled one-minute preview clip and confirm readability, especially font size and outline. If the first minute has no subtitles, extend or move the preview until subtitles are visible.
 - When the user asks you to handle the whole job directly, self-check the preview with screenshots and continue instead of stopping for preview approval. Record that preview readability was self-checked.
-- Default to translating with the current Codex model. External LLM APIs or command-line translation tools are fallbacks only, not the main path.
+- Default to translating with the current agent model. External LLM APIs or command-line translation tools are fallbacks only, not the main path.
 - For long subtitles, translate through numbered batches from the stable `id` values in the cleaned cue JSON, verify every id is returned, save a cache after each batch, and resume from the cache if interrupted.
 - Prefer semantic-screen subtitles: each screen should contain a complete sentence or closed meaning block. Avoid ending a screen with dangling words such as "所以，", "并且", "接下来要", "我要", "它会", or "然后会".
 - Do not wrap subtitles by raw character count alone. Keep Chinese phrases, product names, English phrases, code, commands, and number/unit pairs intact across line breaks.
 - Treat YouTube automatic subtitles as risky. Always check overlap before converting to ASS or burning.
-- If YouTube translated Chinese captions are rate-limited or unavailable, stop retrying after a small number of attempts and use English captions plus Codex translation. Record the source limitation in the review.
+- If YouTube translated Chinese captions are rate-limited or unavailable, stop retrying after a small number of attempts and use English captions plus the current agent model. Record the source limitation in the review.
 - Never overwrite previous MP4/SRT/ASS outputs. Create a new version and record what changed.
 
 ## Scripts
@@ -49,7 +49,7 @@ python3 scripts/check_subtitle_quality.py path/to/subtitles.ass
 python3 scripts/extract_youtube_description.py 01-source/video.info.json --out 01-source/video.description.original.md
 python3 scripts/download_youtube_thumbnail.py "https://youtu.be/VIDEO_ID" --out-dir 01-source --format jpg
 python3 scripts/prepare_youtube_transcript.py 01-source/video.en.vtt --json-out 02-transcripts/video.en.cues.json --srt-out 02-transcripts/video.en.cleaned.srt
-python3 scripts/make_codex_translation_batches.py 02-transcripts/video.en.cues.json --out-dir 03-translation/codex-batches --cache 03-translation/video.zh.cache.json --max-chars 6000
+python3 scripts/make_translation_batches.py 02-transcripts/video.en.cues.json --out-dir 03-translation/translation-batches --cache 03-translation/video.zh.cache.json --max-chars 6000
 python3 scripts/apply_translation_cache.py 02-transcripts/video.en.cues.json 03-translation/video.zh.cache.json --srt-out 03-translation/video.zh.v1.srt
 python3 scripts/repair_chinese_subtitles.py 03-translation/video.zh.v1.srt --out 03-translation/video.zh.v2.srt
 python3 scripts/srt_to_ass.py 03-translation/video.zh.v2.srt --out 04-subtitle-ass/video.zh.v2.ass
@@ -61,7 +61,7 @@ python3 scripts/extract_review_frames.py path/to/output.mp4 --out-dir 06-review/
 python3 scripts/record_feedback.py --issue "字幕太小，看不清" --category size --fix "Add style screenshot approval before full burn" --reusable yes
 ```
 
-`extract_youtube_description.py` extracts YouTube metadata and the original description, and reports whether translation is needed. `download_youtube_thumbnail.py` downloads and converts the YouTube thumbnail for retention or cover preparation. `prepare_youtube_transcript.py` turns YouTube rolling VTT into stable cue JSON/SRT. `make_codex_translation_batches.py` creates numbered batches for Codex self-translation. `apply_translation_cache.py` writes checked translations back to SRT. `repair_chinese_subtitles.py` merges dangling endings, removes empty cues, and repairs simple overlaps. `srt_to_ass.py` creates styled ASS with semantic line wrapping. `check_subtitle_quality.py` catches overlap, empty cues, short flashes, dangling endings, and bad line breaks. `check_ffmpeg_subtitle_support.py` verifies whether ffmpeg can burn subtitles. `make_preview_clip.py` creates a subtitled preview before full burn. `inspect_video.py` verifies MP4 duration, resolution, and audio/video streams. `extract_review_frames.py` creates screenshots for visual checks. `record_feedback.py` appends reusable subtitle feedback to the ledger and can update the shared gates/workflow.
+`extract_youtube_description.py` extracts YouTube metadata and the original description, and reports whether translation is needed. `download_youtube_thumbnail.py` downloads and converts the YouTube thumbnail for retention or cover preparation. `prepare_youtube_transcript.py` turns YouTube rolling VTT into stable cue JSON/SRT. `make_translation_batches.py` creates numbered batches for the current agent model to translate; `make_codex_translation_batches.py` remains as a compatibility alias for older workflows. `apply_translation_cache.py` writes checked translations back to SRT. `repair_chinese_subtitles.py` merges dangling endings, removes empty cues, and repairs simple overlaps. `srt_to_ass.py` creates styled ASS with semantic line wrapping. `check_subtitle_quality.py` catches overlap, empty cues, short flashes, dangling endings, and bad line breaks. `check_ffmpeg_subtitle_support.py` verifies whether ffmpeg can burn subtitles. `make_preview_clip.py` creates a subtitled preview before full burn. `inspect_video.py` verifies MP4 duration, resolution, and audio/video streams. `extract_review_frames.py` creates screenshots for visual checks. `record_feedback.py` appends reusable subtitle feedback to the ledger and can update the shared gates/workflow.
 
 If `check_ffmpeg_subtitle_support.py` reports that no checked ffmpeg can burn subtitles with native filters, use `burn_subtitles_pil.py` for the full MP4 instead of creating a one-off renderer inside the project workspace.
 

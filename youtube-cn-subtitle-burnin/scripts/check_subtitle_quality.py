@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 SRT_TS = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2},\d{3})")
-ASS_TS = re.compile(r"Dialogue:[^,]*,([^,]+),([^,]+),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,(.*)")
+ASS_TS = re.compile(r"Dialogue:[^,]*,([^,]+),([^,]+),([^,]*),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,(.*)")
 HTML_TAG = re.compile(r"<[^>]+>")
 ASS_OVERRIDE = re.compile(r"\{[^}]*\}")
 HANGING_ENDINGS = (
@@ -44,6 +44,7 @@ PROTECTED_PHRASES = (
     "Claude",
     "Chronicle",
 )
+VISIBLE_NEWLINE_MARKER = re.compile(r"(?<=[\u4e00-\u9fff。，！？；、：”）])\s+N(?=[\u4e00-\u9fffA-Za-z0-9“（])")
 
 
 @dataclass
@@ -52,6 +53,7 @@ class Cue:
     start: float
     end: float
     text: str
+    style: str = "Default"
 
 
 def parse_srt_time(value: str) -> float:
@@ -114,7 +116,7 @@ def parse_srt(path: Path) -> list[Cue]:
         raw_idx = lines[0] if ts_line_index > 0 else str(len(cues) + 1)
         idx = int(raw_idx) if raw_idx.isdigit() else len(cues) + 1
         text = "\n".join(lines[ts_line_index + 1 :])
-        cues.append(Cue(idx, parse_srt_time(match.group(1)), parse_srt_time(match.group(2)), text))
+        cues.append(Cue(idx, parse_srt_time(match.group(1)), parse_srt_time(match.group(2)), text, "Default"))
     return cues
 
 
@@ -124,7 +126,7 @@ def parse_ass(path: Path) -> list[Cue]:
         match = ASS_TS.match(line)
         if not match:
             continue
-        cues.append(Cue(len(cues) + 1, parse_ass_time(match.group(1)), parse_ass_time(match.group(2)), match.group(3)))
+        cues.append(Cue(len(cues) + 1, parse_ass_time(match.group(1)), parse_ass_time(match.group(2)), match.group(4), match.group(3).strip() or "Default"))
     return cues
 
 
@@ -137,12 +139,42 @@ def parse_subtitle(path: Path) -> list[Cue]:
     raise SystemExit(f"Unsupported subtitle format: {path.suffix}")
 
 
+def is_bilingual_ass(cues: list[Cue]) -> bool:
+    styles = {cue.style.lower() for cue in cues}
+    return any(style.startswith("chinese") for style in styles) and any(style.startswith("english") for style in styles)
+
+
+def active_language_counts(cues: list[Cue]) -> list[str]:
+    issues: list[str] = []
+    zh_cues = [cue for cue in cues if cue.style.lower().startswith("chinese")]
+    en_cues = [cue for cue in cues if cue.style.lower().startswith("english")]
+    if not zh_cues or not en_cues:
+        return issues
+    for zh in zh_cues:
+        matches = [en for en in en_cues if min(zh.end, en.end) - max(zh.start, en.start) > 0.02]
+        if not matches:
+            issues.append(f"bilingual cue #{zh.idx}: missing active English line")
+        visible_lines = [line for line in visible_text(zh.text).splitlines() if line.strip()]
+        if len(visible_lines) > 2:
+            issues.append(f"bilingual cue #{zh.idx}: Chinese exceeds 2 lines")
+    for en in en_cues:
+        matches = [zh for zh in zh_cues if min(zh.end, en.end) - max(zh.start, en.start) > 0.02]
+        if not matches:
+            issues.append(f"bilingual cue #{en.idx}: English line has no matching Chinese line")
+        visible_lines = [line for line in visible_text(en.text).splitlines() if line.strip()]
+        if len(visible_lines) > 1:
+            issues.append(f"bilingual cue #{en.idx}: English exceeds 1 line")
+    return issues
+
+
 def check(cues: list[Cue], min_duration: float, overlap_tolerance: float, strict_short: bool) -> tuple[list[str], list[str]]:
     issues: list[str] = []
     warnings: list[str] = []
     ordered = sorted(cues, key=lambda cue: (cue.start, cue.end, cue.idx))
     for cue in ordered:
         text = normalize_text(cue.text)
+        is_english_style = cue.style.lower().startswith("english")
+        has_cjk = bool(re.search(r"[\u4e00-\u9fff]", visible_text(cue.text)))
         duration = cue.end - cue.start
         if not text:
             issues.append(f"empty cue #{cue.idx} at {cue.start:.3f}s")
@@ -158,18 +190,28 @@ def check(cues: list[Cue], min_duration: float, overlap_tolerance: float, strict
             warnings.append(f"dense cue #{cue.idx}: {duration:.3f}s, {len(text)} normalized chars")
         if len(text) > 110:
             warnings.append(f"long text cue #{cue.idx}: {len(text)} normalized chars")
-        if any(text.endswith(ending) for ending in HANGING_ENDINGS):
+        if not is_english_style and has_cjk and any(text.endswith(ending) for ending in HANGING_ENDINGS):
             issues.append(f"dangling ending cue #{cue.idx}: {text[-30:]}")
-        elif text.endswith(INCOMPLETE_PUNCTUATION):
+        elif not is_english_style and has_cjk and text.endswith(INCOMPLETE_PUNCTUATION):
             issues.append(f"incomplete punctuation cue #{cue.idx}: {text[-30:]}")
+        if VISIBLE_NEWLINE_MARKER.search(visible_text(cue.text)):
+            issues.append(f"visible newline marker cue #{cue.idx}: {visible_text(cue.text)[-60:]}")
         for line_break_issue in check_line_breaks(cue.text):
             issues.append(f"bad line break cue #{cue.idx}: {line_break_issue}")
-    for previous, current in zip(ordered, ordered[1:]):
-        if current.start < previous.end - overlap_tolerance:
-            issues.append(
-                f"overlap cue #{previous.idx} -> #{current.idx}: "
-                f"{previous.end - current.start:.3f}s"
-            )
+    bilingual = is_bilingual_ass(ordered)
+    if bilingual:
+        issues.extend(active_language_counts(ordered))
+    overlap_groups: dict[str, list[Cue]] = {}
+    for cue in ordered:
+        key = cue.style if bilingual else "__all__"
+        overlap_groups.setdefault(key, []).append(cue)
+    for group in overlap_groups.values():
+        for previous, current in zip(group, group[1:]):
+            if current.start < previous.end - overlap_tolerance:
+                issues.append(
+                    f"overlap cue #{previous.idx} ({previous.style}) -> #{current.idx} ({current.style}): "
+                    f"{previous.end - current.start:.3f}s"
+                )
     return issues, warnings
 
 

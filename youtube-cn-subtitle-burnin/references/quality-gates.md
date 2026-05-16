@@ -12,10 +12,15 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - No screen ending with punctuation that leaves the sentence visibly unfinished, such as `，`、`、`、`：`、`；`.
 - No screen remains too long or visually dense after dangling-ending repair.
 - No line break splitting product names, English phrases, code/commands, number-unit pairs, or common Chinese meaning chunks.
+- No visible newline artifacts such as a stray `N` where an ASS line break should be.
+- Bilingual ASS has Chinese above English, Chinese at most two lines, English at most one line, and no missing English line for active Chinese cues.
+- Bilingual output defaults to Chinese-primary / English-auxiliary layout: English must be visibly smaller and must not make the block feel crowded in preview frames.
 - MP4 has valid duration, video stream, audio stream, and expected resolution.
 - ffmpeg subtitle burn support is checked before full burn; if native subtitle filters are unavailable, the reusable PIL fallback renderer is used and recorded.
 - A subtitled preview clip exists before full burn.
 - The preview clip contains at least one visible subtitle cue; if the selected one-minute range has no subtitles, the preview duration or window is adjusted.
+- Source-video subtitle check frames exist before final layout selection.
+- Design confirmation frames exist before full burn.
 - Review screenshots can be extracted from the final MP4.
 - Original YouTube description is extracted and retained.
 - If the original description is not Chinese, a Chinese translated description is retained.
@@ -30,8 +35,11 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - Subtitle must be readable on phone-sized playback, not just desktop.
 - Text must be strong enough against bright and dark backgrounds.
 - Font size, outline, vertical position, and line breaks must be approved from preview screenshots before full burn.
+- For bilingual output, design confirmation frames must show Chinese above English and the subtitle area must not exceed the three-line default unless a documented exception is accepted.
+- For bilingual output, first-minute preview frames must be checked for stray `N`, cluttered English, and Chinese/English pacing mismatch.
 - Full video generation must wait for user approval of the subtitled preview clip unless the user explicitly waives this step or asks the agent to handle the job end to end. In direct-completion mode, preview screenshots must be self-checked and recorded.
 - Subtitle must not cover faces, code, chart labels, important product UI, or bottom controls.
+- If the source video already has burned-in English subtitles, default to Chinese-only and avoid the original subtitle area unless the user explicitly requests bilingual output.
 - If the video is a software tutorial, inspect bottom input boxes, status bars, and right-side presenter overlays.
 - Edited cover text must be readable at thumbnail size and must not cover faces, important UI, product signals, or the original main title.
 
@@ -62,6 +70,12 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | Translation batch drift | Long video translation misses ids, reorders subtitles, or cannot resume after interruption | Use numbered JSON batches, verify all ids, and save cache after every batch |
 | Unstable cue ids | Cleaned captions are resegmented, then translation cache is matched against position-only ids | Keep stable `id` values in cue JSON and use those ids for batching/cache application |
 | Hard character wrapping | Line break cuts product names, English phrases, or Chinese meaning chunks | Generate ASS with semantic wrapping and check line breaks from preview frames |
+| Visible newline marker | ASS line break escaping is damaged and viewers see a stray `N` in the subtitle text | Run subtitle quality checks for visible newline artifacts before preview and full burn |
+| Bilingual clutter | English line is treated like a second main subtitle, making the result harder to read than Chinese-only | Use Chinese-primary / English-auxiliary layout, with smaller English and preview-frame checks |
+| Bilingual pacing mismatch | Reviewed Chinese semantic screens are paired with fragmented rolling English, making the two lines feel unrelated | Keep Chinese semantic timing by default; compare a matched-boundary preview only if it does not fragment Chinese |
+| Bilingual subtitle block too tall | Chinese already takes three lines, then English is added below | Repair or split Chinese subtitles before generating bilingual ASS; default maximum is Chinese two lines plus English one line |
+| Duplicate English subtitles | Source video already has burned-in English subtitles and bilingual mode adds another English line | Extract source subtitle check frames and default to Chinese-only when burned-in English is visible |
+| Missing design approval | Full video is burned before the user sees representative subtitle design frames | Extract 3-5 design confirmation frames from the preview and get approval or self-check in direct-completion mode |
 | Missing ffmpeg subtitle support | Full burn fails because ffmpeg lacks ass/subtitles filters | Run ffmpeg subtitle support check before preview/full burn and switch to a libass-capable build |
 | One-off fallback renderer | Project contains a temporary burn-in script that is not reusable next time | Use `scripts/burn_subtitles_pil.py` for fallback hard subtitles and keep renderer changes in the skill |
 | Missing thumbnail | Video is delivered without saving the YouTube cover | Download and retain the thumbnail during source acquisition |

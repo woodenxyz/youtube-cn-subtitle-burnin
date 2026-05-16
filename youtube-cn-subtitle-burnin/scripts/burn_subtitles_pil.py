@@ -22,6 +22,7 @@ class Cue:
     start: float
     end: float
     text: str
+    style: str = "Default"
 
 
 def parse_srt_time(value: str) -> float:
@@ -66,7 +67,7 @@ def parse_srt(path: Path) -> list[Cue]:
             continue
         match = SRT_TS.search(lines[ts_index])
         assert match is not None
-        cues.append(Cue(parse_srt_time(match.group(1)), parse_srt_time(match.group(2)), "\n".join(lines[ts_index + 1 :])))
+        cues.append(Cue(parse_srt_time(match.group(1)), parse_srt_time(match.group(2)), "\n".join(lines[ts_index + 1 :]), "Default"))
     return cues
 
 
@@ -75,7 +76,8 @@ def parse_ass(path: Path) -> list[Cue]:
     for line in path.read_text(encoding="utf-8-sig").splitlines():
         match = ASS_TS.match(line)
         if match:
-            cues.append(Cue(parse_ass_time(match.group(1)), parse_ass_time(match.group(2)), clean_ass_text(match.group(3))))
+            style = line.split(",", 4)[3].strip() if line.startswith("Dialogue:") and len(line.split(",", 4)) >= 4 else "Default"
+            cues.append(Cue(parse_ass_time(match.group(1)), parse_ass_time(match.group(2)), clean_ass_text(match.group(3)), style))
     return cues
 
 
@@ -155,8 +157,59 @@ def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, m
     return lines or [text]
 
 
-def active_text(cues: list[Cue], seconds: float) -> str:
-    return "\n".join(cue.text.strip() for cue in cues if cue.start <= seconds <= cue.end and cue.text.strip())
+def active_cues(cues: list[Cue], seconds: float) -> list[Cue]:
+    active = [cue for cue in cues if cue.start <= seconds <= cue.end and cue.text.strip()]
+    return sorted(active, key=lambda cue: (0 if cue.style.lower().startswith("chinese") else 1, cue.style.lower(), cue.start))
+
+
+def is_bilingual(cues: list[Cue]) -> bool:
+    styles = {cue.style.lower() for cue in cues}
+    return any(style.startswith("chinese") for style in styles) and any(style.startswith("english") for style in styles)
+
+
+def draw_subtitles(
+    image: Image.Image,
+    cues: list[Cue],
+    font: ImageFont.ImageFont,
+    english_font: ImageFont.ImageFont,
+    line_height: int,
+    english_line_height: int,
+    stroke_width: int,
+    max_width: float,
+    bottom_margin: float,
+) -> None:
+    active = [cue for cue in cues if cue.text.strip()]
+    if not active:
+        return
+    draw = ImageDraw.Draw(image)
+    if is_bilingual(active):
+        zh_text = "\n".join(cue.text.strip() for cue in active if cue.style.lower().startswith("chinese"))
+        en_text = " ".join(cue.text.strip().replace("\n", " ") for cue in active if cue.style.lower().startswith("english"))
+        zh_lines = wrap_text(draw, zh_text, font, round(image.width * max_width), stroke_width)[:2]
+        en_lines = wrap_text(draw, en_text, english_font, round(image.width * max_width), stroke_width)[:1] if en_text else []
+        total_height = line_height * len(zh_lines) + english_line_height * len(en_lines)
+        y = image.height - total_height - round(image.height * bottom_margin)
+        for line in zh_lines:
+            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+            x = (image.width - (bbox[2] - bbox[0])) / 2
+            draw.text((x, y), line, font=font, fill="white", stroke_width=stroke_width, stroke_fill="black")
+            y += line_height
+        for line in en_lines:
+            bbox = draw.textbbox((0, 0), line, font=english_font, stroke_width=max(2, stroke_width - 1))
+            x = (image.width - (bbox[2] - bbox[0])) / 2
+            draw.text((x, y), line, font=english_font, fill="white", stroke_width=max(2, stroke_width - 1), stroke_fill="black")
+            y += english_line_height
+        return
+
+    text = "\n".join(cue.text.strip() for cue in active)
+    lines = wrap_text(draw, text, font, round(image.width * max_width), stroke_width)
+    total_height = line_height * len(lines)
+    y = image.height - total_height - round(image.height * bottom_margin)
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+        x = (image.width - (bbox[2] - bbox[0])) / 2
+        draw.text((x, y), line, font=font, fill="white", stroke_width=stroke_width, stroke_fill="black")
+        y += line_height
 
 
 def ffmpeg_input_args(path: Path, start: float, duration: float | None) -> list[str]:
@@ -200,8 +253,11 @@ def main() -> int:
 
     width, height, fps = probe(args.video)
     font = load_font(max(18, round(height * args.font_scale)))
+    english_font = load_font(max(16, round(height * args.font_scale * 0.64)))
     font_size = getattr(font, "size", max(18, round(height * args.font_scale)))
+    english_font_size = getattr(english_font, "size", max(16, round(height * args.font_scale * 0.64)))
     line_height = round(font_size * 1.22)
+    english_line_height = round(english_font_size * 1.28)
     frame_size = width * height * 3
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -254,17 +310,17 @@ def main() -> int:
                 break
             absolute_time = args.start + index / fps
             image = Image.frombytes("RGB", (width, height), raw)
-            text = active_text(cues, absolute_time)
-            if text:
-                draw = ImageDraw.Draw(image)
-                lines = wrap_text(draw, text, font, round(width * args.max_width), args.stroke_width)
-                total_height = line_height * len(lines)
-                y = height - total_height - round(height * args.bottom_margin)
-                for line in lines:
-                    bbox = draw.textbbox((0, 0), line, font=font, stroke_width=args.stroke_width)
-                    x = (width - (bbox[2] - bbox[0])) / 2
-                    draw.text((x, y), line, font=font, fill="white", stroke_width=args.stroke_width, stroke_fill="black")
-                    y += line_height
+            draw_subtitles(
+                image,
+                active_cues(cues, absolute_time),
+                font,
+                english_font,
+                line_height,
+                english_line_height,
+                args.stroke_width,
+                args.max_width,
+                args.bottom_margin,
+            )
             encoder.stdin.write(image.tobytes())
             index += 1
     finally:

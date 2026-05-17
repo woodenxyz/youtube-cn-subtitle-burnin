@@ -18,22 +18,17 @@ This skill does more than burn text onto a video. It keeps subtitle files, burn-
 
 ## Installation
 
-### Option 1: Install to a shared skills directory
-
-Use this when you want multiple agents to discover the same skill.
+Recommended one-command install:
 
 ```bash
-git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
-cd youtube-cn-subtitle-burnin
-mkdir -p ~/.agents/skills
-rsync -a youtube-cn-subtitle-burnin/ ~/.agents/skills/youtube-cn-subtitle-burnin/
+npx skills add woodenxyz/youtube-cn-subtitle-burnin
 ```
 
 Restart your agent app after installation, then ask it to use `youtube-cn-subtitle-burnin` for a video task.
 
-### Option 2: Install from the packaged skill
+### Manual Install
 
-The repository includes `dist/youtube-cn-subtitle-burnin.skill`, which contains the installable skill directory.
+If your environment cannot use `npx skills add`, install the packaged skill into a shared skills directory:
 
 ```bash
 git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
@@ -42,7 +37,7 @@ mkdir -p ~/.agents/skills
 unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.agents/skills
 ```
 
-### Option 3: Install for Codex only
+### Install for Codex only
 
 If you only want Codex to discover the skill, install it into Codex's own skills directory.
 

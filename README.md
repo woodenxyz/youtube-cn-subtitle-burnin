@@ -18,22 +18,17 @@
 
 ## 安装
 
-### 方式一：安装到共享 skills 目录
-
-适合希望多个 agent 都能使用这个 skill 的环境。
+推荐直接用一句命令安装：
 
 ```bash
-git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
-cd youtube-cn-subtitle-burnin
-mkdir -p ~/.agents/skills
-rsync -a youtube-cn-subtitle-burnin/ ~/.agents/skills/youtube-cn-subtitle-burnin/
+npx skills add woodenxyz/youtube-cn-subtitle-burnin
 ```
 
 安装后重启你的 agent 应用，然后直接提出视频处理需求即可。
 
-### 方式二：使用已打包文件安装
+### 手动安装
 
-仓库里的 `dist/youtube-cn-subtitle-burnin.skill` 已包含可安装的 skill 目录。
+如果你的环境不能使用 `npx skills add`，可以用仓库里的打包文件安装到共享 skills 目录：
 
 ```bash
 git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
@@ -42,7 +37,7 @@ mkdir -p ~/.agents/skills
 unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.agents/skills
 ```
 
-### 方式三：只给 Codex 使用
+### 只给 Codex 使用
 
 如果你只想让 Codex 发现这个 skill，可以安装到 Codex 自己的 skills 目录。
 

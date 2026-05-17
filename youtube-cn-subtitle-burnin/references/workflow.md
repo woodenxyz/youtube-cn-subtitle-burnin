@@ -4,7 +4,7 @@ Use this SOP for YouTube-to-Chinese or optional Chinese-English bilingual hard s
 
 ## 1. Intake
 
-Record the URL, title, channel, duration, intended use, output preference, subtitle mode, description language/translation status, cover edit preference, and any glossary. If the user only gives a URL, default to Simplified Chinese hard subtitles for self-study/internal use, and ask whether the video thumbnail/cover should also be prepared for the Chinese-subtitled version. Bilingual mode is optional and should be used only when requested or clearly chosen. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; keep the original thumbnail and record `cover edit: not requested`.
+Record the URL, title, channel, duration, intended use, output preference, subtitle mode, subtitle style profile, description language/translation status, cover edit preference, cover mode, and any glossary. If the user only gives a URL, default to Simplified Chinese hard subtitles for self-study/internal use, `zh-only-default` subtitle style, and ask whether the video thumbnail/cover should also be prepared for the Chinese-subtitled version. Bilingual mode is optional and should be used only when requested or clearly chosen; its default style is `bilingual-default`. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; keep the original thumbnail and record `cover edit: not requested` and `cover mode: none`.
 
 Create a per-video workspace:
 
@@ -52,13 +52,23 @@ Default edit for a Chinese-subtitled version:
 
 - Add `中文字幕` in a suitable empty area.
 - Add author/source information in a YouTube-style format, for example `作者：<channel>` or `<channel> · @handle`.
-- Keep all original cover text exactly as-is. Do not translate, rewrite, erase, or replace original thumbnail wording by default.
+- Choose and record one cover mode before editing:
+  - `preserve-original-text`: default; keep all original cover text and add only `中文字幕` plus author/source.
+  - `translate-original-text`: use only when the user explicitly asks to translate the existing cover copy.
+  - `localized-rewrite`: use only when the user asks for a Chinese-platform cover or literal translation is visibly weak.
+- Keep all original cover text exactly as-is in the default `preserve-original-text` mode. Do not translate, rewrite, erase, or replace original thumbnail wording by default.
 - Preserve the original cover composition, face, product signal, logo, and main title unless the user explicitly requests a redesign.
 - Do not cover faces, important UI, product marks, or existing large title text.
-- Use bold, high-contrast text with a thick outline or label background so it remains readable at thumbnail size.
+- Use a consistent label treatment: `中文字幕` as the prominent label, author/source as the smaller secondary label, both with bold high-contrast text and thick outline or solid label background.
 - Save the edited cover as `07-cover/<video-id>.cover.zh.v1.png` or another versioned filename.
+- Create a thumbnail-size preview and inspect that, not only the full-size cover:
 
-If using image generation/editing, copy the generated image into `07-cover/` and leave the generator's original output in place. Verify the edited cover visually before delivery.
+```bash
+python3 scripts/make_cover_preview.py 07-cover/<video-id>.cover.zh.v1.png \
+  --out 07-cover/<video-id>.cover.zh.v1.preview-320.jpg
+```
+
+If using image generation/editing, copy the generated image into `07-cover/` and leave the generator's original output in place. Verify the edited cover and the 320px preview visually before delivery.
 
 ## 2. Source and English Transcript
 
@@ -110,6 +120,8 @@ python3 scripts/make_translation_batches.py 02-transcripts/<video-id>.en.cues.js
 
 For each batch, the agent model must return JSON only, keep every `id`, and preserve product names such as Codex, ChatGPT, Claude, Claude Code, GitHub, OpenAI, Chronicle, Computer Use, and MCP. After each batch, append or update the cache before continuing. For long videos, reduce `--batch-size` or `--max-chars` before translating if a batch looks too large to check reliably.
 
+For long videos, after each translation batch is applied to the cache, spot-check a few ids from the beginning, middle, and end of that batch against the English source. Confirm that names, negation, numbers, and spoken intent remain aligned before moving to the next batch. Do not wait until the final ASS stage to discover a batch-level drift.
+
 Write the checked cache back to SRT:
 
 ```bash
@@ -152,6 +164,8 @@ When converting to Chinese-only ASS, use semantic line wrapping. Product names, 
 python3 scripts/srt_to_ass.py 03-translation/<video-id>.zh.v2.srt \
   --out 04-subtitle-ass/<video-id>.zh.v2.ass
 python3 scripts/check_subtitle_quality.py 04-subtitle-ass/<video-id>.zh.v2.ass
+python3 scripts/check_subtitle_style.py 04-subtitle-ass/<video-id>.zh.v2.ass \
+  --style-profile zh-only-default --require-version-comment
 ```
 
 ### Optional Bilingual ASS
@@ -174,9 +188,15 @@ python3 scripts/make_bilingual_ass.py \
   --en-srt 02-transcripts/<video-id>.en.cleaned.srt \
   --out 04-subtitle-ass/<video-id>.zh-en.v1.ass
 python3 scripts/check_subtitle_quality.py 04-subtitle-ass/<video-id>.zh-en.v1.ass
+python3 scripts/check_subtitle_style.py 04-subtitle-ass/<video-id>.zh-en.v1.ass \
+  --style-profile bilingual-default --require-version-comment
+python3 scripts/check_bilingual_alignment.py \
+  --zh-srt 03-translation/<video-id>.zh.v2.srt \
+  --en-srt 02-transcripts/<video-id>.en.cleaned.srt \
+  --report 06-review/bilingual-alignment.md
 ```
 
-If bilingual output looks visually mismatched because semantic Chinese screens are paired with fragmented rolling English captions, do not accept it only because timing checks pass. Compare two short preview options if needed: (1) Chinese-primary with smaller auxiliary English, and (2) matched cue boundaries. Prefer the option that keeps Chinese readable and the subtitle block calm. Use matched cue boundaries only when it does not make Chinese fragmented.
+If bilingual output looks visually mismatched because semantic Chinese screens are paired with fragmented rolling English captions, do not accept it only because timing checks pass. Review the alignment report samples against the source speech: opening, midpoint, ending, and dense speech sections must have Chinese meaning, English reference, and voice timing in the same neighborhood. Compare two short preview options if needed: (1) Chinese-primary with smaller auxiliary English, and (2) matched cue boundaries. Prefer the option that keeps Chinese readable and the subtitle block calm. Use matched cue boundaries only when it does not make Chinese fragmented.
 
 Before preview/full burn, explicitly check for visible newline artifacts such as stray `N` characters. These usually mean an ASS line break was escaped incorrectly and must be fixed before delivery.
 
@@ -189,7 +209,8 @@ Do not burn the full video until the user has checked a subtitled preview clip.
 Generate a one-minute preview with burned subtitles:
 
 ```bash
-python3 scripts/make_preview_clip.py 01-source/source.mp4 04-subtitle-ass/translated.zh.ass --out 06-review/preview.v1.mp4
+python3 scripts/make_preview_clip.py 01-source/source.mp4 04-subtitle-ass/translated.zh.ass \
+  --out 06-review/preview.v1.mp4 --style-profile zh-only-default
 ```
 
 The preview must visibly contain subtitles. If the first minute has no subtitle cue, extend the preview duration or move to the first subtitle-bearing window. The helper does this automatically when possible.
@@ -214,14 +235,15 @@ After preview and design-frame approval, still generate screenshots from the fin
 
 Default style direction:
 
+- use the fixed style profiles: `zh-only-default` for Chinese-only, `bilingual-default` for bilingual, and a `*-raised` profile only when bottom UI, captions, faces, code, or controls would be covered
 - high contrast white Chinese text with thick dark outline
 - readable on phone-sized playback
 - bottom center unless it covers important UI
-- move upward or use a safe area when bottom UI, captions, faces, code, or controls are affected
+- record the reason when using `zh-only-raised` or `bilingual-raised`
 - for bilingual output, Chinese above English, Chinese larger, English smaller, total subtitle area normally no more than three lines
 - for bilingual output, sample the first minute specifically for stray `N`, mismatched Chinese/English pacing, and whether the English line makes the layout feel cluttered
 
-The exact size must be decided from preview and design confirmation frames for the specific video. If the subtitle looks small, thin, too tall, crowded, or easy to miss, adjust layout and regenerate preview before full burn.
+Do not invent a new size for each video. If the fixed profile looks small, thin, too tall, crowded, or easy to miss, first try the corresponding raised profile when the issue is placement; only create a documented exception when both fixed profiles fail.
 
 ## 6. Full Burn-in
 
@@ -272,13 +294,14 @@ Run:
 ```bash
 python3 scripts/check_subtitle_quality.py path/to/final.srt
 python3 scripts/check_subtitle_quality.py path/to/final.ass
+python3 scripts/check_subtitle_style.py path/to/final.ass --style-profile zh-only-default --require-version-comment
 python3 scripts/inspect_video.py path/to/final.mp4
 python3 scripts/extract_review_frames.py path/to/final.mp4 --out-dir 06-review/screenshots-final
 ```
 
 Use `review-template.md` for `06-review/review.md`. Delivery is blocked until quality gates pass or every exception is explicitly recorded.
 
-Delivery should list the burned MP4, the final Chinese SRT, the final English SRT when bilingual mode is used, the final ASS file, design confirmation frames, the original thumbnail, the original description, and the Chinese description if translation was needed. If the user requested cover editing, also list the edited cover. If a subtitle, description, cover, or design frame file is intentionally omitted, record why in the review.
+Delivery should list the burned MP4, the final Chinese SRT, the final English SRT when bilingual mode is used, the final ASS file, subtitle style profile, bilingual alignment report when bilingual mode is used, design confirmation frames, the original thumbnail, the original description, and the Chinese description if translation was needed. If the user requested cover editing, also list the cover mode, edited cover, and 320px cover preview. If a subtitle, description, cover, or design frame file is intentionally omitted, record why in the review.
 
 ## 8. Feedback Iteration
 

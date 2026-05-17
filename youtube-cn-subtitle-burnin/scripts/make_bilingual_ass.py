@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from subtitle_style import STYLE_VERSION, ass_style_line, get_style, style_names
 
 SRT_TS = re.compile(r"(\d{2}:\d{2}:\d{2}),(\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}),(\d{3})")
 BREAK_CHARS_ZH = "，。！？；、： "
@@ -130,18 +131,37 @@ def validate_pairs(
     return pairs, issues, warnings
 
 
-def build_ass(pairs: list[tuple[Cue, list[str], str]], font: str, zh_size: int, en_size: int) -> str:
+def style_line(profile: str, name: str, font: str, size: int) -> str:
+    style = get_style(profile)
+    english = name.lower().startswith("english")
+    expected_size = style.en_size if english else style.zh_size
+    if font == style.font and size == expected_size:
+        return ass_style_line(profile, name)
+    margin_l = 80 if english else style.margin_l
+    margin_r = 80 if english else style.margin_r
+    margin_v = style.en_margin_v if english else style.zh_margin_v
+    bold = "0" if english else "-1"
+    outline = max(3, style.outline - 1) if english else style.outline
+    return (
+        f"Style: {name},{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,"
+        f"{bold},0,0,0,100,100,0,0,1,{outline},{style.shadow},2,{margin_l},{margin_r},{margin_v},1"
+    )
+
+
+def build_ass(pairs: list[tuple[Cue, list[str], str]], style_profile: str, font: str, zh_size: int, en_size: int) -> str:
     header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1280
 PlayResY: 720
 WrapStyle: 2
 ScaledBorderAndShadow: yes
+; StyleVersion: {STYLE_VERSION}
+; StyleProfile: {style_profile}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Chinese,{font},{zh_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,5,1,2,64,64,86,1
-Style: English,{font},{en_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,0,0,0,0,100,100,0,0,1,4,1,2,80,80,46,1
+{style_line(style_profile, "Chinese", font, zh_size)}
+{style_line(style_profile, "English", font, en_size)}
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -165,6 +185,7 @@ def main() -> int:
     parser.add_argument("--font", default="PingFang SC")
     parser.add_argument("--zh-font-size", type=int, default=35)
     parser.add_argument("--en-font-size", type=int, default=19)
+    parser.add_argument("--style-profile", choices=style_names(), default="bilingual-default")
     parser.add_argument("--max-zh-chars", type=int, default=60)
     parser.add_argument("--max-en-chars", type=int, default=180)
     parser.add_argument("--min-overlap", type=float, default=0.05)
@@ -181,6 +202,13 @@ def main() -> int:
     if args.out.exists() and not args.force:
         print(f"FAIL: output already exists, choose a new version or pass --force: {args.out}")
         return 1
+    style = get_style(args.style_profile)
+    if args.font == parser.get_default("font"):
+        args.font = style.font
+    if args.zh_font_size == parser.get_default("zh_font_size"):
+        args.zh_font_size = style.zh_size
+    if args.en_font_size == parser.get_default("en_font_size"):
+        args.en_font_size = style.en_size
 
     zh_cues = parse_srt(args.zh_srt)
     en_cues = parse_srt(args.en_srt)
@@ -212,7 +240,7 @@ def main() -> int:
         return 1
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(build_ass(pairs, args.font, args.zh_font_size, args.en_font_size), encoding="utf-8")
+    args.out.write_text(build_ass(pairs, args.style_profile, args.font, args.zh_font_size, args.en_font_size), encoding="utf-8")
     print(f"PASS: wrote bilingual ASS with {len(pairs)} cue pair(s) to {args.out}")
     return 0
 

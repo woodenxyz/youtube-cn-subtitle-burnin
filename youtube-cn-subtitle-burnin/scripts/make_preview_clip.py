@@ -12,6 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from subtitle_style import get_style, style_names
 
 SRT_TS = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2},\d{3})")
 ASS_TS = re.compile(r"Dialogue:[^,]*,([^,]+),([^,]+),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,(.*)")
@@ -153,10 +154,11 @@ def find_font() -> str | None:
     return next((path for path in candidates if Path(path).exists()), None)
 
 
-def write_drawtext_files(cues: list[Cue], start: float, end: float, temp_dir: Path) -> str:
+def write_drawtext_files(cues: list[Cue], start: float, end: float, temp_dir: Path, style_profile: str) -> str:
+    style = get_style(style_profile)
     font = find_font()
     filters: list[str] = []
-    fontsize = 36
+    fontsize = style.zh_size
     for idx, cue in enumerate(cues):
         cue_start = max(cue.start, start)
         cue_end = min(cue.end, end)
@@ -169,8 +171,8 @@ def write_drawtext_files(cues: list[Cue], start: float, end: float, temp_dir: Pa
             "drawtext="
             f"{font_part}"
             f"textfile=cue_{idx}.txt:"
-            f"fontcolor=white:fontsize={fontsize}:borderw=4:bordercolor=black:"
-            "x=(w-text_w)/2:y=h-text_h-60:"
+            f"fontcolor=white:fontsize={fontsize}:borderw={style.stroke_width}:bordercolor=black:"
+            f"x=(w-text_w)/2:y=h-text_h-{style.zh_margin_v}:"
             f"enable='between(t\\,{cue_start - start:.3f}\\,{cue_end - start:.3f})'"
         )
     if not filters:
@@ -226,50 +228,52 @@ def is_bilingual(cues: list[Cue]) -> bool:
     return any(style.startswith("chinese") for style in styles) and any(style.startswith("english") for style in styles)
 
 
-def draw_subtitles(image: Image.Image, cues: list[Cue]) -> None:
+def draw_subtitles(image: Image.Image, cues: list[Cue], style_profile: str) -> None:
     if not cues:
         return
+    style = get_style(style_profile)
     draw = ImageDraw.Draw(image)
     bilingual = is_bilingual(cues)
-    font_size = max(28, round(image.height * 0.055))
+    font_size = max(28, round(image.height * style.font_scale))
     font = load_font(font_size)
     if bilingual:
         english_font_size = max(18, round(font_size * 0.64))
         english_font = load_font(english_font_size)
         zh_text = "\n".join(cue.text.strip() for cue in cues if cue.style.lower().startswith("chinese"))
         en_text = " ".join(cue.text.strip().replace("\n", " ") for cue in cues if cue.style.lower().startswith("english"))
-        zh_lines = wrap_text(draw, zh_text, font, round(image.width * 0.86))[:2]
-        en_lines = wrap_text(draw, en_text, english_font, round(image.width * 0.86))[:1] if en_text else []
+        zh_lines = wrap_text(draw, zh_text, font, round(image.width * style.max_width))[:2]
+        en_lines = wrap_text(draw, en_text, english_font, round(image.width * style.max_width))[:1] if en_text else []
         line_height = round(font_size * 1.18)
         english_line_height = round(english_font_size * 1.3)
         total_height = line_height * len(zh_lines) + english_line_height * len(en_lines)
-        y = image.height - total_height - round(image.height * 0.055)
+        y = image.height - total_height - round(image.height * style.bottom_margin)
         for line in zh_lines:
-            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=4)
+            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=style.stroke_width)
             x = (image.width - (bbox[2] - bbox[0])) / 2
-            draw.text((x, y), line, font=font, fill="white", stroke_width=4, stroke_fill="black")
+            draw.text((x, y), line, font=font, fill="white", stroke_width=style.stroke_width, stroke_fill="black")
             y += line_height
         for line in en_lines:
-            bbox = draw.textbbox((0, 0), line, font=english_font, stroke_width=3)
+            en_stroke = max(2, style.stroke_width - 1)
+            bbox = draw.textbbox((0, 0), line, font=english_font, stroke_width=en_stroke)
             x = (image.width - (bbox[2] - bbox[0])) / 2
-            draw.text((x, y), line, font=english_font, fill="white", stroke_width=3, stroke_fill="black")
+            draw.text((x, y), line, font=english_font, fill="white", stroke_width=en_stroke, stroke_fill="black")
             y += english_line_height
         return
 
     text = "\n".join(cue.text.strip() for cue in cues)
-    lines = wrap_text(draw, text, font, round(image.width * 0.86))
+    lines = wrap_text(draw, text, font, round(image.width * style.max_width))
     line_height = round(font_size * 1.25)
     total_height = line_height * len(lines)
-    y = image.height - total_height - round(image.height * 0.075)
+    y = image.height - total_height - round(image.height * style.bottom_margin)
     for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=4)
+        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=style.stroke_width)
         line_width = bbox[2] - bbox[0]
         x = (image.width - line_width) / 2
-        draw.text((x, y), line, font=font, fill="white", stroke_width=4, stroke_fill="black")
+        draw.text((x, y), line, font=font, fill="white", stroke_width=style.stroke_width, stroke_fill="black")
         y += line_height
 
 
-def render_pil_preview(video: Path, cues: list[Cue], start: float, duration: float, output: Path, temp_dir: Path) -> None:
+def render_pil_preview(video: Path, cues: list[Cue], start: float, duration: float, output: Path, temp_dir: Path, style_profile: str) -> None:
     fps = 12
     frames_dir = temp_dir / "frames"
     frames_dir.mkdir()
@@ -305,7 +309,7 @@ def render_pil_preview(video: Path, cues: list[Cue], start: float, duration: flo
         if not current:
             continue
         image = Image.open(frame_path).convert("RGB")
-        draw_subtitles(image, current)
+        draw_subtitles(image, current, style_profile)
         image.save(frame_path)
 
     encode = subprocess.run(
@@ -354,6 +358,7 @@ def main() -> int:
     parser.add_argument("--duration", type=float, default=60)
     parser.add_argument("--max-duration", type=float, default=180)
     parser.add_argument("--increment", type=float, default=30)
+    parser.add_argument("--style-profile", choices=style_names(), default="zh-only-default")
     args = parser.parse_args()
 
     if shutil.which("ffmpeg") is None:
@@ -367,6 +372,8 @@ def main() -> int:
         return 1
 
     cues = parse_subtitle(args.subtitle)
+    if is_bilingual(cues) and args.style_profile == "zh-only-default":
+        args.style_profile = "bilingual-default"
     start, duration, selected = choose_window(cues, parse_time(args.start), args.duration, args.max_duration, args.increment)
     if not selected:
         print("FAIL: could not find a subtitle-bearing preview window")
@@ -376,7 +383,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         if is_bilingual(cues):
-            render_pil_preview(args.video, selected, start, duration, args.out, temp_path)
+            render_pil_preview(args.video, selected, start, duration, args.out, temp_path, args.style_profile)
             mode = "PIL frame fallback (bilingual layout)"
             print(f"PASS: wrote subtitled preview {args.out}")
             print(f"Window: start={start:.3f}s duration={duration:.3f}s subtitle_cues={len(selected)}")
@@ -388,10 +395,10 @@ def main() -> int:
             video_filter = "subtitles=filename=preview.srt"
             mode = "subtitles"
         elif has_filter("drawtext"):
-            video_filter = write_drawtext_files(selected, start, start + duration, temp_path)
+            video_filter = write_drawtext_files(selected, start, start + duration, temp_path, args.style_profile)
             mode = "drawtext fallback"
         else:
-            render_pil_preview(args.video, selected, start, duration, args.out, temp_path)
+            render_pil_preview(args.video, selected, start, duration, args.out, temp_path, args.style_profile)
             mode = "PIL frame fallback"
             print(f"PASS: wrote subtitled preview {args.out}")
             print(f"Window: start={start:.3f}s duration={duration:.3f}s subtitle_cues={len(selected)}")

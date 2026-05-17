@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from subtitle_style import STYLE_VERSION, ass_style_line, get_style, style_names
 
 TS = re.compile(r"(\d\d:\d\d:\d\d),(\d{3})\s+-->\s+(\d\d:\d\d:\d\d),(\d{3})")
 PROTECTED_PHRASES = (
@@ -105,6 +106,17 @@ def parse_srt(path: Path) -> list[tuple[str, str, str]]:
     return cues
 
 
+def default_style_line(profile: str, font: str, font_size: int) -> str:
+    style = get_style(profile)
+    if font == style.font and font_size == style.zh_size:
+        return ass_style_line(profile, "Default")
+    return (
+        f"Style: Default,{font},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,"
+        f"-1,0,0,0,100,100,0,0,1,{style.outline},{style.shadow},2,"
+        f"{style.margin_l},{style.margin_r},{style.zh_margin_v},1"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Convert Chinese SRT to readable ASS with semantic wrapping.")
     parser.add_argument("srt", type=Path)
@@ -112,8 +124,15 @@ def main() -> int:
     parser.add_argument("--font", default="PingFang SC")
     parser.add_argument("--font-size", type=int, default=42)
     parser.add_argument("--max-chars", type=int, default=24)
+    parser.add_argument("--style-profile", choices=style_names(), default="zh-only-default")
     parser.add_argument("--force", action="store_true", help="Overwrite existing ASS output")
     args = parser.parse_args()
+
+    style = get_style(args.style_profile)
+    if args.font == parser.get_default("font"):
+        args.font = style.font
+    if args.font_size == parser.get_default("font_size"):
+        args.font_size = style.zh_size
 
     cues = parse_srt(args.srt)
     if not cues:
@@ -129,10 +148,12 @@ PlayResX: 1280
 PlayResY: 720
 WrapStyle: 2
 ScaledBorderAndShadow: yes
+; StyleVersion: {STYLE_VERSION}
+; StyleProfile: {args.style_profile}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{args.font},{args.font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,5,1,2,64,64,58,1
+{default_style_line(args.style_profile, args.font, args.font_size)}
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

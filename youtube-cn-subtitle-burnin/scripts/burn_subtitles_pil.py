@@ -11,6 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from subtitle_style import get_style, style_names
 
 SRT_TS = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2},\d{3})")
 ASS_TS = re.compile(r"Dialogue:[^,]*,([^,]+),([^,]+),[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,(.*)")
@@ -233,6 +234,7 @@ def main() -> int:
     parser.add_argument("--bottom-margin", type=float, default=0.025, help="Bottom margin relative to video height")
     parser.add_argument("--stroke-width", type=int, default=3)
     parser.add_argument("--max-width", type=float, default=0.88, help="Subtitle max width relative to video width")
+    parser.add_argument("--style-profile", choices=style_names(), default="zh-only-default")
     parser.add_argument("--force", action="store_true", help="Overwrite existing MP4 output")
     args = parser.parse_args()
 
@@ -250,6 +252,17 @@ def main() -> int:
     if not cues:
         print(f"FAIL: no subtitle cues found in {args.subtitle}")
         return 1
+    if is_bilingual(cues) and args.style_profile == "zh-only-default":
+        args.style_profile = "bilingual-default"
+    style = get_style(args.style_profile)
+    if args.font_scale == parser.get_default("font_scale"):
+        args.font_scale = style.font_scale
+    if args.bottom_margin == parser.get_default("bottom_margin"):
+        args.bottom_margin = style.bottom_margin
+    if args.stroke_width == parser.get_default("stroke_width"):
+        args.stroke_width = style.stroke_width
+    if args.max_width == parser.get_default("max_width"):
+        args.max_width = style.max_width
 
     width, height, fps = probe(args.video)
     font = load_font(max(18, round(height * args.font_scale)))

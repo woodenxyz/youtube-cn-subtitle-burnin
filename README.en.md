@@ -1,24 +1,14 @@
-# YouTube Chinese Subtitle Burn-in Skill
+# YouTube Chinese Subtitle Skill
 
 [中文](README.md) | English
 
-This repository contains the `youtube-cn-subtitle-burnin` Agent Skill.
+Turn YouTube videos or local video files into reviewed Chinese-subtitled MP4 outputs.
 
-It helps an AI agent turn YouTube videos or local video/subtitle inputs into Simplified Chinese or optional Chinese-English bilingual hard-subtitled MP4 files, while keeping reusable subtitle files, design confirmation frames, and review records.
-
-![YouTube Chinese subtitle skill infographic](assets/youtube-cn-subtitle-skill-infographic.png)
-
-## What It Includes
-
-- `assets/youtube-cn-subtitle-skill-infographic.png` - concise capability overview for the skill
-- `youtube-cn-subtitle-burnin/SKILL.md` - the main skill instructions
-- `youtube-cn-subtitle-burnin/references/` - workflow, quality gates, review template, and feedback ledger
-- `youtube-cn-subtitle-burnin/scripts/` - helper scripts for subtitle cleanup, translation batching, fixed-style Chinese-only and bilingual ASS conversion, bilingual alignment review, cover preview checks, preview creation, burn-in, design confirmation frames, and review
-- `dist/youtube-cn-subtitle-burnin.skill` - packaged skill artifact
+This skill does more than burn text onto a video. It keeps reusable subtitle files, subtitle styling, cover previews, descriptions, screenshots, and review notes so the result can be checked, revised, and reused later.
 
 ## Install
 
-Install by copying or unpacking the skill directory into your agent skills folder.
+Copy or unpack the skill directory into your agent skills folder.
 
 For Daniel's local Do Agent setup:
 
@@ -27,9 +17,76 @@ mkdir -p /Users/daniel/.agents/skills
 rsync -a youtube-cn-subtitle-burnin/ /Users/daniel/.agents/skills/youtube-cn-subtitle-burnin/
 ```
 
-For Codex-style skill installation, use the skills directory configured by your Codex environment.
+For Codex-style environments, use the skills directory configured by your Codex setup.
 
-## Package
+After installation, ask the agent to use `youtube-cn-subtitle-burnin` for video subtitle jobs.
+
+## Usage Examples
+
+```text
+Use youtube-cn-subtitle-burnin to create a Chinese-subtitled version of this YouTube video.
+Keep the SRT and ASS files. For the cover, add only “中文字幕” and the source label; do not translate the original cover text.
+```
+
+For bilingual output:
+
+```text
+Use youtube-cn-subtitle-burnin to create a Chinese-English hard-subtitled version.
+Chinese should be the main subtitle; English should be a smaller reference line. Keep the MP4, SRT, ASS, and review screenshots.
+```
+
+## What You Provide
+
+- A YouTube URL, or a local video file
+- Whether the output should be Chinese-only or bilingual
+- Whether the cover should be processed
+- Optional glossary, product names, or translation preferences
+
+## What You Get
+
+- Hard-subtitled MP4
+- Chinese SRT
+- Styled ASS used for burn-in
+- English SRT and bilingual ASS when bilingual mode is used
+- Original cover, edited cover, and 320px thumbnail preview
+- Original and Chinese descriptions
+- Preview clip, design frames, final screenshots, and review notes
+
+## Who It Is For
+
+- You want a Chinese study copy of an English YouTube technical video.
+- You need Chinese-only or Chinese-English subtitles for courses, interviews, or product walkthroughs.
+- You want a repeatable subtitle workflow instead of adjusting styles by hand for every video.
+- You want to keep SRT / ASS files, not only the final burned MP4.
+
+## What It Solves
+
+- Unstable subtitle styling: fixed profiles for Chinese-only and bilingual subtitles
+- Weak bilingual correspondence: sampled checks for Chinese, English, and speech timing
+- Messy automatic captions: cleanup for overlaps, empty cues, broken segments, and dangling endings
+- Inconsistent cover handling: three explicit modes for preserving, translating, or localizing cover copy
+- Non-reusable delivery: SRT, ASS, screenshots, and review notes are retained by default
+
+## Quality Gates
+
+Every real video output should pass these checks:
+
+- The preview clip must visibly contain subtitles.
+- Subtitles must be readable at phone size.
+- Subtitle styling must match a fixed profile.
+- Bilingual subtitles must include alignment samples.
+- Edited covers must be checked as 320px thumbnail previews.
+- The final MP4 must have valid audio, video, screenshots, and delivery files.
+
+## Requirements
+
+- Python
+- ffmpeg / ffprobe
+- yt-dlp
+- Pillow
+- An agent model that can run the skill and handle translation, judgment, and review
+
+## Maintainer Notes
 
 Refresh the packaged artifact after changing files under `youtube-cn-subtitle-burnin/`:
 
@@ -39,8 +96,6 @@ mkdir -p dist
 zip -r dist/youtube-cn-subtitle-burnin.skill youtube-cn-subtitle-burnin
 ```
 
-## Validate
-
 Run these checks before publishing or installing a changed version:
 
 ```bash
@@ -49,25 +104,10 @@ for f in youtube-cn-subtitle-burnin/scripts/*.py; do python3 "$f" --help >/dev/n
 unzip -l dist/youtube-cn-subtitle-burnin.skill
 ```
 
-## Workflow Contract
+## Workflow Overview
 
-For real video jobs, the skill expects the agent to:
+<img src="assets/youtube-cn-subtitle-skill-infographic.png" alt="YouTube Chinese subtitle skill infographic" width="560">
 
-1. keep original source metadata, thumbnail, and description
-2. create reusable Chinese SRT and styled ASS subtitle files, plus English SRT and bilingual ASS when bilingual mode is used
-3. check source frames for existing burned-in subtitles before choosing bilingual layout
-4. keep subtitles on a fixed style profile unless a raised profile is explicitly needed
-5. review bilingual Chinese/English timing samples when bilingual mode is used
-6. record cover mode and inspect a 320px cover preview when editing covers
-7. create a subtitled preview before burning the full video
-8. extract design confirmation frames before full burn
-9. inspect the final MP4
-10. extract review screenshots
-11. write a review record
-12. record reusable subtitle feedback back into the skill references
-
-Previous MP4, SRT, and ASS outputs should not be overwritten. New versions should use versioned filenames.
-
-## Open Source Notes
+## License
 
 This project is released under the MIT License.

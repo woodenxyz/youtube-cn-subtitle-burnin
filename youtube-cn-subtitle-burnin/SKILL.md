@@ -1,6 +1,17 @@
 ---
 name: youtube-cn-subtitle-burnin
 description: Create Simplified Chinese or Chinese-English bilingual hard-subtitled videos from YouTube links or existing video/subtitle files. Use when the user asks to add/burn Chinese subtitles, translate YouTube videos, produce Chinese or bilingual SRT/ASS/MP4 outputs, download or prepare YouTube thumbnails/covers, extract or translate YouTube descriptions, add Chinese-subtitle labels or author information to covers, review subtitle readability, fix subtitle timing/splitting/size/occlusion problems, or incorporate user subtitle feedback into the workflow.
+version: 0.1.0
+metadata:
+  openclaw:
+    homepage: https://github.com/woodenxyz/youtube-cn-subtitle-burnin
+    emoji: "🎬"
+    requires:
+      bins:
+        - python3
+        - ffmpeg
+        - ffprobe
+        - yt-dlp
 ---
 
 # YouTube Chinese Subtitle Burn-in

@@ -2,24 +2,56 @@
 
 [中文](README.md) | English
 
-Turn YouTube videos or local video files into reviewed Chinese-subtitled MP4 outputs.
+Turn YouTube videos or local video files into reviewed Chinese-subtitled MP4 outputs that can be checked, revised, and reused.
 
-This skill does more than burn text onto a video. It keeps reusable subtitle files, subtitle styling, cover previews, descriptions, screenshots, and review notes so the result can be checked, revised, and reused later.
+This skill does more than burn text onto a video. It keeps subtitle files, burn-in styling, cover assets, descriptions, preview clips, screenshots, and review notes so each result has a clear review trail.
 
-## Install
+## Features
 
-Copy or unpack the skill directory into your agent skills folder.
+- Create hard-subtitled Chinese MP4 outputs
+- Optionally create Chinese-English bilingual hard-subtitled MP4 outputs
+- Keep reusable SRT and ASS subtitle files
+- Create a subtitled preview before processing the full video
+- Check subtitle size, position, segmentation, overlap, and phone-size readability
+- Optionally retain and prepare YouTube covers and descriptions
+- Output screenshots and review notes for final checking
 
-For Daniel's local Do Agent setup:
+## Installation
+
+### Option 1: Install to a shared skills directory
+
+Use this when you want multiple agents to discover the same skill.
 
 ```bash
-mkdir -p /Users/daniel/.agents/skills
-rsync -a youtube-cn-subtitle-burnin/ /Users/daniel/.agents/skills/youtube-cn-subtitle-burnin/
+git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
+cd youtube-cn-subtitle-burnin
+mkdir -p ~/.agents/skills
+rsync -a youtube-cn-subtitle-burnin/ ~/.agents/skills/youtube-cn-subtitle-burnin/
 ```
 
-For Codex-style environments, use the skills directory configured by your Codex setup.
+Restart your agent app after installation, then ask it to use `youtube-cn-subtitle-burnin` for a video task.
 
-After installation, ask the agent to use `youtube-cn-subtitle-burnin` for video subtitle jobs.
+### Option 2: Install from the packaged skill
+
+The repository includes `dist/youtube-cn-subtitle-burnin.skill`, which contains the installable skill directory.
+
+```bash
+git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
+cd youtube-cn-subtitle-burnin
+mkdir -p ~/.agents/skills
+unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.agents/skills
+```
+
+### Option 3: Install for Codex only
+
+If you only want Codex to discover the skill, install it into Codex's own skills directory.
+
+```bash
+git clone https://github.com/woodenxyz/youtube-cn-subtitle-burnin.git
+cd youtube-cn-subtitle-burnin
+mkdir -p ~/.codex/skills
+unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
+```
 
 ## Usage Examples
 
@@ -27,8 +59,6 @@ After installation, ask the agent to use `youtube-cn-subtitle-burnin` for video 
 Use youtube-cn-subtitle-burnin to create a Chinese-subtitled version of this YouTube video.
 Keep the SRT and ASS files. For the cover, add only “中文字幕” and the source label; do not translate the original cover text.
 ```
-
-For bilingual output:
 
 ```text
 Use youtube-cn-subtitle-burnin to create a Chinese-English hard-subtitled version.
@@ -39,7 +69,7 @@ Chinese should be the main subtitle; English should be a smaller reference line.
 
 - A YouTube URL, or a local video file
 - Whether the output should be Chinese-only or bilingual
-- Whether the cover should be processed
+- Whether the cover should be prepared
 - Optional glossary, product names, or translation preferences
 
 ## What You Get
@@ -52,41 +82,34 @@ Chinese should be the main subtitle; English should be a smaller reference line.
 - Original and Chinese descriptions
 - Preview clip, design frames, final screenshots, and review notes
 
-## Who It Is For
+## Good Use Cases
 
-- You want a Chinese study copy of an English YouTube technical video.
-- You need Chinese-only or Chinese-English subtitles for courses, interviews, or product walkthroughs.
-- You want a repeatable subtitle workflow instead of adjusting styles by hand for every video.
-- You want to keep SRT / ASS files, not only the final burned MP4.
-
-## What It Solves
-
-- Unstable subtitle styling: fixed profiles for Chinese-only and bilingual subtitles
-- Weak bilingual correspondence: sampled checks for Chinese, English, and speech timing
-- Messy automatic captions: cleanup for overlaps, empty cues, broken segments, and dangling endings
-- Inconsistent cover handling: three explicit modes for preserving, translating, or localizing cover copy
-- Non-reusable delivery: SRT, ASS, screenshots, and review notes are retained by default
+- Turning English YouTube technical videos into Chinese study copies
+- Adding Chinese subtitles to courses, interviews, or product walkthroughs
+- Creating bilingual versions with a smaller English reference line
+- Keeping subtitle source files instead of only the burned MP4
+- Requiring preview and screenshot checks before accepting a result
 
 ## Quality Gates
 
-Every real video output should pass these checks:
+Every real output should pass these checks:
 
-- The preview clip must visibly contain subtitles.
-- Subtitles must be readable at phone size.
-- Subtitle styling must match a fixed profile.
-- Bilingual subtitles must include alignment samples.
-- Edited covers must be checked as 320px thumbnail previews.
-- The final MP4 must have valid audio, video, screenshots, and delivery files.
+- The preview clip visibly contains subtitles.
+- Subtitles are readable at phone size.
+- Subtitle styling matches the fixed profile.
+- Bilingual subtitles include sampled checks across Chinese, English, and speech timing.
+- Edited covers remain readable as 320px thumbnail previews.
+- The final MP4 has valid audio, video, screenshots, and delivery files.
 
 ## Requirements
 
-- Python
+- Python 3
 - ffmpeg / ffprobe
 - yt-dlp
 - Pillow
 - An agent model that can run the skill and handle translation, judgment, and review
 
-## Maintainer Notes
+## Maintenance
 
 Refresh the packaged artifact after changing files under `youtube-cn-subtitle-burnin/`:
 
@@ -110,4 +133,4 @@ unzip -l dist/youtube-cn-subtitle-burnin.skill
 
 ## License
 
-This project is released under the MIT License.
+MIT

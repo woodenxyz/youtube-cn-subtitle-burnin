@@ -39,5 +39,7 @@ Quality gate update:
 | 2026-05-17 | style | Subtitle style varied across recent video jobs | Font size, outline, and vertical placement were still partly chosen per job instead of fixed by profile | yes | Add fixed subtitle style profiles and `check_subtitle_style.py`; record style profile in reviews |
 | 2026-05-17 | bilingual alignment | Chinese/English correspondence and voice timing still needed manual repair | Quality gates checked layout and overlap, but did not require representative meaning-and-timing samples | yes | Add `check_bilingual_alignment.py` and require bilingual alignment reports before final burn |
 | 2026-05-17 | cover | Cover translation/rewrite behavior and added-label style varied across jobs | Cover workflow lacked explicit modes and thumbnail-size preview checks | yes | Add cover modes, fixed label treatment, and 320px preview gate |
+| 2026-05-23 | description | Description document in `08-description/` was left untranslated | The workflow mentioned description translation, but it was too easy to miss during final delivery | yes | Make the Chinese description file a hard delivery gate and translate it with the current agent model by default |
+| 2026-05-24 | bilingual default | User had to repeatedly ask for Chinese above English bilingual subtitles | The workflow still treated bilingual output as optional instead of the default mode | yes | Make bilingual output the default, record subtitle mode reason, and require Chinese-only exceptions to be explicit |
 
 ## Entries

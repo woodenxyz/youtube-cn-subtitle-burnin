@@ -20,6 +20,7 @@ Edited cover:
 Cover mode:
 Cover preview 320:
 Subtitle mode:
+Subtitle mode reason:
 Subtitle style profile:
 English SRT:
 Chinese SRT:
@@ -41,6 +42,7 @@ Delivery files:
 - [ ] Source-video subtitle check frames extracted
 - [ ] Source subtitle state recorded
 - [ ] Subtitle mode recorded
+- [ ] Default bilingual mode used, or Chinese-only exception reason recorded
 - [ ] Final Chinese SRT retained for delivery
 - [ ] Final English SRT retained when bilingual mode is used
 - [ ] Final ASS retained for delivery
@@ -51,7 +53,7 @@ Delivery files:
 - [ ] ffmpeg subtitle burn support checked
 - [ ] Subtitle burn method recorded, including PIL fallback if used
 - [ ] Original YouTube description extracted and retained
-- [ ] Chinese description retained when original is not Chinese
+- [ ] Chinese description file exists in `08-description/` when original is not Chinese
 - [ ] Description translation preserves product names, URLs, and timestamps
 - [ ] Original thumbnail downloaded and retained
 - [ ] Cover edit preference recorded

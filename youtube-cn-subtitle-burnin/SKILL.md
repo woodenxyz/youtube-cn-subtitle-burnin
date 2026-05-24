@@ -1,6 +1,6 @@
 ---
 name: youtube-cn-subtitle-burnin
-description: Create Simplified Chinese or Chinese-English bilingual hard-subtitled videos from YouTube links or existing video/subtitle files. Use when the user asks to add/burn Chinese subtitles, translate YouTube videos, produce Chinese or bilingual SRT/ASS/MP4 outputs, download or prepare YouTube thumbnails/covers, extract or translate YouTube descriptions, add Chinese-subtitle labels or author information to covers, review subtitle readability, fix subtitle timing/splitting/size/occlusion problems, or incorporate user subtitle feedback into the workflow.
+description: Create Chinese-English bilingual hard-subtitled videos by default, or Chinese-only versions when explicitly requested or required by source subtitle conflicts. Use when the user asks to add/burn Chinese subtitles, translate YouTube videos, produce Chinese or bilingual SRT/ASS/MP4 outputs, download or prepare YouTube thumbnails/covers, extract or translate YouTube descriptions, add Chinese-subtitle labels or author information to covers, review subtitle readability, fix subtitle timing/splitting/size/occlusion problems, or incorporate user subtitle feedback into the workflow.
 version: 0.1.0
 metadata:
   openclaw:
@@ -18,7 +18,7 @@ metadata:
 
 ## Overview
 
-Turn a YouTube video into a Simplified Chinese or optional Chinese-English bilingual hard-subtitled MP4 and deliver the reusable subtitle files alongside it. Retain SRT/ASS, thumbnail, original/translated description, screenshots, design confirmation frames, and review notes. Treat subtitle quality as a video QA task, not just a translation task.
+Turn a YouTube video into a Chinese-English bilingual hard-subtitled MP4 by default and deliver the reusable subtitle files alongside it. Chinese is the primary subtitle above, English is the smaller reference subtitle below. Retain SRT/ASS, thumbnail, original/translated description, screenshots, design confirmation frames, and review notes. Treat subtitle quality as a video QA task, not just a translation task.
 
 ## Workflow Decision
 
@@ -38,7 +38,8 @@ Always load:
 - Do not deliver a video until subtitle timing, sentence completeness, video streams, and sample screenshots have been checked.
 - Do not treat the burned MP4 as the only deliverable. The final Chinese subtitle files must be kept and listed for delivery.
 - Download and retain the original video thumbnail when downloading the video.
-- Extract and retain the original YouTube description. If the description is not Chinese, translate it into Chinese with the current agent model and preserve proper nouns, product names, URLs, and chapter timestamps.
+- Extract and retain the original YouTube description in `08-description/`.
+- If the original description is not Chinese, create a Chinese file such as `08-description/<video-id>.description.zh.md` before delivery. Use the current agent model directly by default; do not rely on baoyu-translate or external translation APIs for this step unless the user explicitly asks. Preserve proper nouns, product names, URLs, and chapter timestamps.
 - Ask whether the video thumbnail/cover should be prepared for the Chinese-subtitled version unless the user already specified a cover preference. If the user asks for direct end-to-end completion and did not mention cover work, keep the original thumbnail only and record `cover edit: not requested`.
 - Do not burn the whole video with an unreviewed subtitle style. First create a subtitled one-minute preview clip and confirm readability, especially font size and outline. If the first minute has no subtitles, extend or move the preview until subtitles are visible.
 - Before full burn-in, extract 3-5 subtitle design confirmation frames from the preview and confirm size, line count, vertical position, and occlusion. In direct-completion mode, self-check these frames and record the result.
@@ -48,7 +49,7 @@ Always load:
 - Prefer semantic-screen subtitles: each screen should contain a complete sentence or closed meaning block. Avoid ending a screen with dangling words such as "所以，", "并且", "接下来要", "我要", "它会", or "然后会".
 - Do not wrap subtitles by raw character count alone. Keep Chinese phrases, product names, English phrases, code, commands, and number/unit pairs intact across line breaks.
 - Treat YouTube automatic subtitles as risky. Always check overlap before converting to ASS or burning.
-- Bilingual mode is optional. Default to Chinese-only unless the user asks for bilingual subtitles. If the source video already has burned-in English subtitles, default to Chinese-only and move Chinese text away from the existing subtitle area unless the user explicitly requests bilingual output anyway.
+- Bilingual mode is the default for new hard-subtitled outputs: Chinese above English, Chinese primary, English auxiliary. Use Chinese-only only when the user explicitly asks for it, or when the source video already has burned-in English subtitles and the user did not explicitly ask to duplicate English.
 - In bilingual mode, use Chinese above English. Chinese may use at most two lines, English defaults to one smaller line, and the whole subtitle area defaults to at most three lines. If Chinese would require three lines, repair or split the Chinese subtitles before generating bilingual ASS.
 - If YouTube translated Chinese captions are rate-limited or unavailable, stop retrying after a small number of attempts and use English captions plus the current agent model. Record the source limitation in the review.
 - Never overwrite previous MP4/SRT/ASS outputs. Create a new version and record what changed.
@@ -120,7 +121,7 @@ When the user points out a subtitle problem:
 For every video, keep these outputs in the working project:
 
 - source metadata and original subtitles
-- original YouTube description, and Chinese translated description when the original is not Chinese
+- original YouTube description, and Chinese translated description in `08-description/` when the original is not Chinese
 - original video thumbnail, and edited thumbnail/cover if requested
 - cleaned English subtitle
 - translated Chinese SRT for reuse

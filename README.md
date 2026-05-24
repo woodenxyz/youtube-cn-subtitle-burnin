@@ -2,14 +2,14 @@
 
 中文 | [English](README.en.md)
 
-把 YouTube 视频或本地视频做成可复查、可修改、可复用的中文字幕成片。
+把 YouTube 视频或本地视频默认做成可复查、可修改、可复用的中英双语字幕成片：中文在上，英文在下。
 
 这个 skill 不只是把文字压到画面上。它会保留字幕文件、烧录样式、封面素材、简介、预览片、截图和审阅记录，让一次视频处理可以被检查，也可以在后续继续修改。
 
 ## 功能
 
-- 生成中文硬字幕 MP4
-- 可选生成中英双语硬字幕 MP4
+- 默认生成中英双语硬字幕 MP4，中文在上、英文在下
+- 可按明确要求生成中文-only 硬字幕 MP4
 - 保留可复用的 SRT 和 ASS 字幕文件
 - 先做带字幕预览片，再做完整视频
 - 检查字幕大小、位置、断句、重叠和手机可读性
@@ -51,19 +51,19 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 ## 使用示例
 
 ```text
-用 youtube-cn-subtitle-burnin，把这个 YouTube 视频做成中文字幕版。
+用 youtube-cn-subtitle-burnin，把这个 YouTube 视频做成双语字幕版。
 需要保留 SRT 和 ASS，封面只加“中文字幕”和作者来源，不翻译原封面文字。
 ```
 
 ```text
-用 youtube-cn-subtitle-burnin 做中英双语硬字幕版。
-中文作为主字幕，英文作为小号参考行，最终保留 MP4、SRT、ASS 和审阅截图。
+用 youtube-cn-subtitle-burnin 做中文-only 硬字幕版。
+不要加英文参考行，最终保留 MP4、SRT、ASS 和审阅截图。
 ```
 
 ## 你需要提供
 
 - YouTube 链接，或本地视频文件
-- 中文-only 还是中英双语
+- 是否要覆盖默认双语模式，例如明确要求中文-only
 - 是否需要处理封面
 - 固定术语、产品名或翻译偏好
 
@@ -106,6 +106,8 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 
 ## 维护
 
+这个仓库同时保存 skill 源码和打包文件。实际 skill 源码在 `youtube-cn-subtitle-burnin/`，打包文件在 `dist/youtube-cn-subtitle-burnin.skill`。
+
 修改 `youtube-cn-subtitle-burnin/` 下的文件后，重新生成打包文件：
 
 ```bash
@@ -121,6 +123,8 @@ python3 -m py_compile youtube-cn-subtitle-burnin/scripts/*.py
 for f in youtube-cn-subtitle-burnin/scripts/*.py; do python3 "$f" --help >/dev/null || exit 1; done
 unzip -l dist/youtube-cn-subtitle-burnin.skill
 ```
+
+如果要让本机 agent 立即使用最新版本，还要把 `youtube-cn-subtitle-burnin/` 同步到共享安装目录 `~/.agents/skills/youtube-cn-subtitle-burnin`，并确认两边内容一致。
 
 ## 流程概览
 

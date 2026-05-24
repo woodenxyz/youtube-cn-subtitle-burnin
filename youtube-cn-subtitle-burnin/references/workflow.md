@@ -1,10 +1,10 @@
 # Workflow
 
-Use this SOP for YouTube-to-Chinese or optional Chinese-English bilingual hard subtitle work. The final output includes a burned MP4, reusable subtitle files, design confirmation frames, and review notes.
+Use this SOP for YouTube-to-Chinese-English bilingual hard subtitle work. The default output is bilingual: Chinese above English, Chinese primary, English auxiliary. The final output includes a burned MP4, reusable subtitle files, design confirmation frames, and review notes.
 
 ## 1. Intake
 
-Record the URL, title, channel, duration, intended use, output preference, subtitle mode, subtitle style profile, description language/translation status, cover edit preference, cover mode, and any glossary. If the user only gives a URL, default to Simplified Chinese hard subtitles for self-study/internal use, `zh-only-default` subtitle style, and ask whether the video thumbnail/cover should also be prepared for the Chinese-subtitled version. Bilingual mode is optional and should be used only when requested or clearly chosen; its default style is `bilingual-default`. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; keep the original thumbnail and record `cover edit: not requested` and `cover mode: none`.
+Record the URL, title, channel, duration, intended use, output preference, subtitle mode, subtitle mode reason, subtitle style profile, description language/translation status, cover edit preference, cover mode, and any glossary. If the user only gives a URL, default to Chinese-English bilingual hard subtitles for self-study/internal use, with Chinese above English and the `bilingual-default` subtitle style. Use Chinese-only only when the user asks for it, or when source subtitle check frames show burned-in English subtitles and the user did not explicitly ask to duplicate English. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; keep the original thumbnail and record `cover edit: not requested` and `cover mode: none`.
 
 Create a per-video workspace:
 
@@ -27,7 +27,7 @@ python3 scripts/extract_youtube_description.py 01-source/<video-id>.info.json \
 python3 scripts/download_youtube_thumbnail.py "<youtube-url>" --out-dir 01-source --format jpg
 ```
 
-If the original description is not Chinese, translate it with the current agent model and save a Chinese version such as `08-description/<video-id>.description.zh.md`. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs.
+If the original description is not Chinese, translate it with the current agent model and save a Chinese version such as `08-description/<video-id>.description.zh.md`. This is a required delivery file, not optional polish. Do not continue to final delivery until the Chinese description file exists and is listed in the review. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs. Do not use baoyu-translate or external translation APIs for this step unless the user explicitly asks.
 
 Keep the original thumbnail even if the user does not need cover editing. If the user wants a Chinese-subtitle cover, enter Cover Processing Mode below, create the edited cover under `07-cover/`, and keep the original and edited files listed in the review.
 
@@ -40,8 +40,8 @@ python3 scripts/extract_source_subtitle_frames.py 01-source/source.mp4 \
 
 Record one of these source subtitle states in the review:
 
-- `no burned-in subtitles`: bilingual mode may be used.
-- `burned-in English subtitles`: default to Chinese-only and move Chinese text away from the existing subtitle area, unless the user explicitly requests bilingual output anyway.
+- `no burned-in subtitles`: use the default bilingual mode.
+- `burned-in English subtitles`: use the Chinese-only exception and move Chinese text away from the existing subtitle area, unless the user explicitly requests bilingual output anyway.
 - `burned-in non-English or unstable subtitles`: inspect frame placement before deciding whether bilingual output is usable.
 
 ### Cover Processing Mode
@@ -158,7 +158,7 @@ python3 scripts/repair_chinese_subtitles.py 03-translation/<video-id>.zh.v1.srt 
 python3 scripts/check_subtitle_quality.py 03-translation/<video-id>.zh.v2.srt
 ```
 
-When converting to Chinese-only ASS, use semantic line wrapping. Product names, English phrases, code, commands, and number/unit pairs must not be split across lines.
+When converting to Chinese-only ASS for an explicit Chinese-only request or a source-video exception, use semantic line wrapping. Product names, English phrases, code, commands, and number/unit pairs must not be split across lines.
 
 ```bash
 python3 scripts/srt_to_ass.py 03-translation/<video-id>.zh.v2.srt \
@@ -168,9 +168,9 @@ python3 scripts/check_subtitle_style.py 04-subtitle-ass/<video-id>.zh.v2.ass \
   --style-profile zh-only-default --require-version-comment
 ```
 
-### Optional Bilingual ASS
+### Default Bilingual ASS
 
-Use bilingual mode only when the source subtitle state allows it or the user explicitly requests it. The layout is Chinese above English:
+Use bilingual mode by default when the source subtitle state allows it. The layout is Chinese above English:
 
 - Default to `Chinese primary, English auxiliary`: keep the reviewed Chinese semantic screens as the main readable subtitle, and add smaller English below only as a reference line.
 - Do not fragment good Chinese subtitles just to make English align word-for-word. If exact bilingual pairing makes Chinese jumpy or incomplete, keep the Chinese semantic timing and shrink/soften the English line instead.

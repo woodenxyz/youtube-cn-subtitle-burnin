@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import shutil
@@ -18,14 +19,18 @@ def candidate_ffmpegs(explicit: str | None) -> list[str]:
     candidates: list[str] = []
     if explicit:
         candidates.append(explicit)
+    for env_name in ("FFMPEG", "FFMPEG_PATH"):
+        configured = os.environ.get(env_name)
+        if configured:
+            candidates.append(configured)
     default = shutil.which("ffmpeg")
     if default:
         candidates.append(default)
     candidates.extend(
         [
-            "/Users/daniel/Library/Application Support/bilibili/ffmpeg/ffmpeg",
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
+            "/usr/bin/ffmpeg",
         ]
     )
     seen: set[str] = set()

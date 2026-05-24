@@ -2,14 +2,14 @@
 
 [中文](README.md) | English
 
-Turn YouTube videos or local video files into reviewed Chinese-subtitled MP4 outputs that can be checked, revised, and reused.
+Turn YouTube videos or local video files into reviewed Chinese-English bilingual MP4 outputs by default, with Chinese above English.
 
 This skill does more than burn text onto a video. It keeps subtitle files, burn-in styling, cover assets, descriptions, preview clips, screenshots, and review notes so each result has a clear review trail.
 
 ## Features
 
-- Create hard-subtitled Chinese MP4 outputs
-- Optionally create Chinese-English bilingual hard-subtitled MP4 outputs
+- Create Chinese-English bilingual hard-subtitled MP4 outputs by default
+- Create Chinese-only hard-subtitled MP4 outputs when explicitly requested
 - Keep reusable SRT and ASS subtitle files
 - Create a subtitled preview before processing the full video
 - Check subtitle size, position, segmentation, overlap, and phone-size readability
@@ -51,19 +51,19 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 ## Usage Examples
 
 ```text
-Use youtube-cn-subtitle-burnin to create a Chinese-subtitled version of this YouTube video.
+Use youtube-cn-subtitle-burnin to create a Chinese-English bilingual version of this YouTube video.
 Keep the SRT and ASS files. For the cover, add only “中文字幕” and the source label; do not translate the original cover text.
 ```
 
 ```text
-Use youtube-cn-subtitle-burnin to create a Chinese-English hard-subtitled version.
-Chinese should be the main subtitle; English should be a smaller reference line. Keep the MP4, SRT, ASS, and review screenshots.
+Use youtube-cn-subtitle-burnin to create a Chinese-only hard-subtitled version.
+Do not add the English reference line. Keep the MP4, SRT, ASS, and review screenshots.
 ```
 
 ## What You Provide
 
 - A YouTube URL, or a local video file
-- Whether the output should be Chinese-only or bilingual
+- Whether to override the default bilingual mode, for example by explicitly asking for Chinese-only
 - Whether the cover should be prepared
 - Optional glossary, product names, or translation preferences
 

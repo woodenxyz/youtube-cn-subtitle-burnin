@@ -13,6 +13,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - No screen remains too long or visually dense after dangling-ending repair.
 - No line break splitting product names, English phrases, code/commands, number-unit pairs, or common Chinese meaning chunks.
 - No visible newline artifacts such as a stray `N` where an ASS line break should be.
+- Subtitle mode defaults to bilingual unless the user asks for Chinese-only or source-video check frames show a burned-in English subtitle conflict; any Chinese-only exception is recorded with a reason.
 - ASS subtitle style matches a fixed profile and includes the style version comment: `zh-only-default`, `zh-only-raised`, `bilingual-default`, or `bilingual-raised`.
 - Raised subtitle profiles are used only when the default bottom placement would cover important source content, and the reason is recorded.
 - Bilingual ASS has Chinese above English, Chinese at most two lines, English at most one line, and no missing English line for active Chinese cues.
@@ -26,7 +27,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - Design confirmation frames exist before full burn.
 - Review screenshots can be extracted from the final MP4.
 - Original YouTube description is extracted and retained.
-- If the original description is not Chinese, a Chinese translated description is retained.
+- If the original description is not Chinese, `08-description/<video-id>.description.zh.md` exists and is listed in the review.
 - Original video thumbnail is downloaded and retained.
 - Cover edit preference is recorded before delivery.
 - If cover editing/localization is requested, edited cover exists in `07-cover/` and the original thumbnail remains unchanged.
@@ -79,6 +80,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | Unstable cue ids | Cleaned captions are resegmented, then translation cache is matched against position-only ids | Keep stable `id` values in cue JSON and use those ids for batching/cache application |
 | Hard character wrapping | Line break cuts product names, English phrases, or Chinese meaning chunks | Generate ASS with semantic wrapping and check line breaks from preview frames |
 | Visible newline marker | ASS line break escaping is damaged and viewers see a stray `N` in the subtitle text | Run subtitle quality checks for visible newline artifacts before preview and full burn |
+| Chinese-only by habit | A new output becomes Chinese-only even though the user did not ask for that and the source has no burned-in English conflict | Default to bilingual, record subtitle mode reason, and use Chinese-only only for explicit requests or source-video exceptions |
 | Bilingual clutter | English line is treated like a second main subtitle, making the result harder to read than Chinese-only | Use Chinese-primary / English-auxiliary layout, with smaller English and preview-frame checks |
 | Bilingual pacing mismatch | Reviewed Chinese semantic screens are paired with fragmented rolling English, making the two lines feel unrelated | Keep Chinese semantic timing by default; compare a matched-boundary preview only if it does not fragment Chinese |
 | Missing bilingual alignment review | Timing checks pass, but no one sampled whether Chinese, English, and speech line up | Run `check_bilingual_alignment.py` and review the generated samples before final burn |
@@ -89,6 +91,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | One-off fallback renderer | Project contains a temporary burn-in script that is not reusable next time | Use `scripts/burn_subtitles_pil.py` for fallback hard subtitles and keep renderer changes in the skill |
 | Missing thumbnail | Video is delivered without saving the YouTube cover | Download and retain the thumbnail during source acquisition |
 | Missing description | Video is delivered without saving the YouTube description | Extract and retain the original description during source acquisition |
+| Missing translated description | Original description is non-Chinese but `08-description/` has no Chinese description file | Translate the description with the current agent model and block delivery until `08-description/<video-id>.description.zh.md` exists |
 | Description translation loses names | Chinese description translates product names, URLs, or timestamps incorrectly | Preserve proper nouns, product names, URLs, and chapter timestamps while translating surrounding text |
 | Unclear cover preference | User may expect a Chinese-subtitle cover but the workflow never asks | Ask whether the thumbnail/cover should be prepared during intake and record the answer |
 | Unclear cover mode | Cover copy gets translated, preserved, or rewritten inconsistently across videos | Record `preserve-original-text`, `translate-original-text`, or `localized-rewrite` before editing starts |

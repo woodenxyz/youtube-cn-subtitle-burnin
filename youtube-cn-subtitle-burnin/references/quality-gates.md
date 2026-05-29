@@ -13,6 +13,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - No screen remains too long or visually dense after dangling-ending repair.
 - No line break splitting product names, English phrases, code/commands, number-unit pairs, or common Chinese meaning chunks.
 - No visible newline artifacts such as a stray `N` where an ASS line break should be.
+- Job config is recorded from `config/defaults.json`, including translation provider, subtitle mode, thumbnail download, cover edit, and cover mode.
 - Subtitle mode defaults to bilingual unless the user asks for Chinese-only or source-video check frames show a burned-in English subtitle conflict; any Chinese-only exception is recorded with a reason.
 - ASS subtitle style matches a fixed profile and includes the style version comment: `zh-only-default`, `zh-only-raised`, `bilingual-default`, or `bilingual-raised`.
 - Raised subtitle profiles are used only when the default bottom placement would cover important source content, and the reason is recorded.
@@ -28,7 +29,11 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - Review screenshots can be extracted from the final MP4.
 - Original YouTube description is extracted and retained.
 - If the original description is not Chinese, `08-description/<video-id>.description.zh.md` exists and is listed in the review.
-- Original video thumbnail is downloaded and retained.
+- Translation provider is recorded for subtitle and description translation; the default is `agent` unless the user selected `local`.
+- For agent-model subtitle translation, the translation cache is retained, every source cue id has a Chinese translation, and no unexpected ids are present.
+- For local-model subtitle or description translation, Local Translate run logs are retained, `failed_segments.jsonl` files are checked, and delivery is blocked when any failed segment remains.
+- For local-model SRT translation, translated cue numbers, timestamps, and cue count match the source SRT before the result is accepted.
+- Original video thumbnail is downloaded and retained because `download_thumbnail: true` is the default.
 - Cover edit preference is recorded before delivery.
 - If cover editing/localization is requested, edited cover exists in `07-cover/` and the original thumbnail remains unchanged.
 - Cover mode is recorded as `preserve-original-text`, `translate-original-text`, or `localized-rewrite` before editing starts.
@@ -41,6 +46,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 - Subtitle must be readable on phone-sized playback, not just desktop.
 - Text must be strong enough against bright and dark backgrounds.
 - Font size, outline, vertical position, and line breaks must be approved from preview screenshots before full burn.
+- For bilingual output, Chinese should read near Bilibili reference scale on phone-sized playback, and the English auxiliary line must not shrink into a decorative caption.
 - Preview and design frames must be checked against the fixed style profile, not only against subjective readability.
 - For bilingual output, design confirmation frames must show Chinese above English and the subtitle area must not exceed the three-line default unless a documented exception is accepted.
 - For bilingual output, first-minute preview frames must be checked for stray `N`, cluttered English, and Chinese/English pacing mismatch.
@@ -54,6 +60,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 
 - Meaning is faithful to the original.
 - Chinese is natural and watchable.
+- Translation provider, agent translation cache or Local Translate run log, failed segment file when local is used, and any provider change are recorded in the review.
 - For bilingual output, sampled Chinese meaning, English reference, and spoken audio timing must correspond closely enough that the viewer does not feel the lines are from different moments.
 - Technical terms and names are consistent.
 - Description translation preserves proper nouns, product names, URLs, and chapter timestamps.
@@ -70,12 +77,15 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | Half-sentence screens | Screen ends with connector or unfinished predicate | Rebuild screens around complete sentences or closed meaning blocks |
 | Incomplete punctuation screens | Screen ends with `，`、`、`、`：`、`；` even though the thought continues | Merge with the following cue or split again at a complete semantic boundary |
 | Long dense screens after repair | Dangling-ending repair passes, but a subtitle still holds too much text or stays too long | Split long repaired cues by Chinese semantic punctuation and re-check readability |
-| Subtitle too small | Looks acceptable on desktop but tiring on phone-sized playback | Require preview screenshots and adjust size/outline before full burn |
+| Subtitle too small | Looks acceptable on desktop but tiring on phone-sized playback; English auxiliary line is much smaller than Bilibili-style bilingual references | Require preview screenshots, compare against the fixed readable scale, and adjust size/outline before full burn |
 | Style drift between videos | Font size, outline, or vertical position changes across jobs without a reason | Generate ASS with a fixed style profile and run `check_subtitle_style.py` |
 | Preview without subtitles | One-minute preview shows no subtitle, so user cannot judge style | Extend duration or move preview to a subtitle-bearing window before asking for approval |
 | Bottom UI occlusion | Subtitle covers input fields, controls, code, chart labels, or lower-third text | Move subtitle upward, reduce line count, or use a safer region for that segment |
-| YouTube translated caption rate limit | Chinese timedtext download returns HTTP 429 or repeated subtitle download errors | Stop repeated retries, use English captions, translate with the current agent model, and record the source limitation |
-| External translation detour | Workflow tries APIs/tools even though the current agent model can translate | Use the current agent model as the default translator; external APIs/tools are fallback only |
+| YouTube translated caption rate limit | Chinese timedtext download returns HTTP 429 or repeated subtitle download errors | Stop repeated retries, use English captions, translate through the configured provider, and record the source limitation |
+| Unclear translation provider | Workflow switches between agent, local, or external translation without recording the selected provider | Start from `config/defaults.json`, default to `agent`, and record any override before translating |
+| External translation detour | Workflow tries external APIs/tools even though the configured provider is agent or local | Use only the configured provider; do not fall back without user approval |
+| Local Translate failures ignored | `failed_segments.jsonl` contains failed segments, but the output is accepted anyway | When `translation_provider: local` is selected, check the failure file and block delivery until failed segments are resolved or a user-approved provider change is recorded |
+| SRT timing changed during local translation | Translated SRT has different cue numbers, timestamps, or cue count | Verify SRT structure after Local Translate and reject outputs that change timing structure |
 | Translation batch drift | Long video translation misses ids, reorders subtitles, or cannot resume after interruption | Use numbered JSON batches, verify all ids, and save cache after every batch |
 | Unstable cue ids | Cleaned captions are resegmented, then translation cache is matched against position-only ids | Keep stable `id` values in cue JSON and use those ids for batching/cache application |
 | Hard character wrapping | Line break cuts product names, English phrases, or Chinese meaning chunks | Generate ASS with semantic wrapping and check line breaks from preview frames |
@@ -91,7 +101,7 @@ Use this file before accepting a subtitle or video output. A failed gate blocks 
 | One-off fallback renderer | Project contains a temporary burn-in script that is not reusable next time | Use `scripts/burn_subtitles_pil.py` for fallback hard subtitles and keep renderer changes in the skill |
 | Missing thumbnail | Video is delivered without saving the YouTube cover | Download and retain the thumbnail during source acquisition |
 | Missing description | Video is delivered without saving the YouTube description | Extract and retain the original description during source acquisition |
-| Missing translated description | Original description is non-Chinese but `08-description/` has no Chinese description file | Translate the description with the current agent model and block delivery until `08-description/<video-id>.description.zh.md` exists |
+| Missing translated description | Original description is non-Chinese but `08-description/` has no Chinese description file | Translate the description with the configured provider and block delivery until `08-description/<video-id>.description.zh.md` exists |
 | Description translation loses names | Chinese description translates product names, URLs, or timestamps incorrectly | Preserve proper nouns, product names, URLs, and chapter timestamps while translating surrounding text |
 | Unclear cover preference | User may expect a Chinese-subtitle cover but the workflow never asks | Ask whether the thumbnail/cover should be prepared during intake and record the answer |
 | Unclear cover mode | Cover copy gets translated, preserved, or rewritten inconsistently across videos | Record `preserve-original-text`, `translate-original-text`, or `localized-rewrite` before editing starts |

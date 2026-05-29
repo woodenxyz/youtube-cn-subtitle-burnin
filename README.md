@@ -10,6 +10,8 @@
 
 - 默认生成中英双语硬字幕 MP4，中文在上、英文在下
 - 可按明确要求生成中文-only 硬字幕 MP4
+- 默认用当前 Agent 模型翻译字幕和简介，也可以通过配置改用本地 Local Translate
+- 默认下载并保留 YouTube 原始封面，不默认编辑封面
 - 保留可复用的 SRT 和 ASS 字幕文件
 - 先做带字幕预览片，再做完整视频
 - 检查字幕大小、位置、断句、重叠和手机可读性
@@ -64,6 +66,7 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 
 - YouTube 链接，或本地视频文件
 - 是否要覆盖默认双语模式，例如明确要求中文-only
+- 是否要覆盖默认 Agent 翻译，例如明确要求使用本地模型
 - 是否需要处理封面
 - 固定术语、产品名或翻译偏好
 
@@ -73,9 +76,25 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 - 中文字幕 SRT
 - 烧录样式 ASS
 - 双语模式下的英文 SRT 和双语 ASS
-- 原始封面、编辑后封面和 320px 缩略图预览
+- 原始封面；如果请求处理封面，还会得到编辑后封面和 320px 缩略图预览
 - 原始简介和中文简介
 - 预览片、设计确认图、最终截图和审阅记录
+
+## 默认配置
+
+默认配置保存在 `youtube-cn-subtitle-burnin/config/defaults.json`：
+
+```json
+{
+  "translation_provider": "agent",
+  "subtitle_mode": "bilingual",
+  "download_thumbnail": true,
+  "cover_edit": "not_requested",
+  "cover_mode": "none"
+}
+```
+
+也就是说：默认用 Agent 翻译，默认做中英双语字幕，默认下载原始封面，但不默认处理或改写封面。
 
 ## 适合场景
 
@@ -102,7 +121,8 @@ unzip -o dist/youtube-cn-subtitle-burnin.skill -d ~/.codex/skills
 - ffmpeg / ffprobe
 - yt-dlp
 - Pillow
-- 一个能执行该 skill 的 agent 模型，用于翻译、判断和审阅
+- 一个能执行该 skill 的 agent 模型，用于翻译、流程控制、判断、修复和审阅
+- 如果要选择本地翻译：已安装的 Local Translate skill 和可用的本地 Ollama 翻译模型
 
 ## 维护
 

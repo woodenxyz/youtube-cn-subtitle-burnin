@@ -23,6 +23,11 @@ venv/
 *.mp3
 *.aac
 
+# Local project state and sidecar materials
+PROJECT_STATE.md
+open-source-promo-ppt/
+outputs/
+
 # Keep packaged skill artifacts versionable
 !dist/
 !dist/*.skill

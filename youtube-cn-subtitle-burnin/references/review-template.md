@@ -10,11 +10,17 @@ URL:
 Channel:
 Duration:
 Use:
+Job config:
+Translation provider:
+Thumbnail download:
 
 Source subtitle:
 Source subtitle state:
 Original description:
 Chinese description:
+Description translation provider:
+Description translation evidence:
+Description Local Translate failed segments (local only):
 Original thumbnail:
 Edited cover:
 Cover mode:
@@ -22,6 +28,11 @@ Cover preview 320:
 Subtitle mode:
 Subtitle mode reason:
 Subtitle style profile:
+Subtitle translation provider:
+Subtitle agent translation cache:
+Subtitle Local Translate run log (local only):
+Subtitle Local Translate failed segments (local only):
+Translation provider changed:
 English SRT:
 Chinese SRT:
 ASS:
@@ -41,7 +52,15 @@ Delivery files:
 - [ ] Bad line-break check passed
 - [ ] Source-video subtitle check frames extracted
 - [ ] Source subtitle state recorded
+- [ ] Default job config recorded from `config/defaults.json`
 - [ ] Subtitle mode recorded
+- [ ] Translation provider recorded
+- [ ] Agent translation cache retained when `translation_provider: agent`
+- [ ] Agent translation cache contains every source cue id when `translation_provider: agent`
+- [ ] Local Translate run log retained when `translation_provider: local`
+- [ ] Local Translate failed segments checked when `translation_provider: local`
+- [ ] SRT cue numbers, timestamps, and cue count unchanged when `translation_provider: local`
+- [ ] Translation provider change recorded when the selected provider was not used
 - [ ] Default bilingual mode used, or Chinese-only exception reason recorded
 - [ ] Final Chinese SRT retained for delivery
 - [ ] Final English SRT retained when bilingual mode is used
@@ -54,6 +73,9 @@ Delivery files:
 - [ ] Subtitle burn method recorded, including PIL fallback if used
 - [ ] Original YouTube description extracted and retained
 - [ ] Chinese description file exists in `08-description/` when original is not Chinese
+- [ ] Description translation provider recorded
+- [ ] Description translation evidence retained when original is not Chinese
+- [ ] Local Translate failed segments checked for description translation when `translation_provider: local`
 - [ ] Description translation preserves product names, URLs, and timestamps
 - [ ] Original thumbnail downloaded and retained
 - [ ] Cover edit preference recorded

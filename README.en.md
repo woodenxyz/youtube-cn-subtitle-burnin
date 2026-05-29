@@ -10,6 +10,8 @@ This skill does more than burn text onto a video. It keeps subtitle files, burn-
 
 - Create Chinese-English bilingual hard-subtitled MP4 outputs by default
 - Create Chinese-only hard-subtitled MP4 outputs when explicitly requested
+- Translate subtitles and descriptions with the current agent model by default, with a config option for local Local Translate
+- Download and retain the original YouTube thumbnail by default; do not edit the cover by default
 - Keep reusable SRT and ASS subtitle files
 - Create a subtitled preview before processing the full video
 - Check subtitle size, position, segmentation, overlap, and phone-size readability
@@ -64,6 +66,7 @@ Do not add the English reference line. Keep the MP4, SRT, ASS, and review screen
 
 - A YouTube URL, or a local video file
 - Whether to override the default bilingual mode, for example by explicitly asking for Chinese-only
+- Whether to override the default agent translation provider, for example by asking for the local model
 - Whether the cover should be prepared
 - Optional glossary, product names, or translation preferences
 
@@ -73,9 +76,25 @@ Do not add the English reference line. Keep the MP4, SRT, ASS, and review screen
 - Chinese SRT
 - Styled ASS used for burn-in
 - English SRT and bilingual ASS when bilingual mode is used
-- Original cover, edited cover, and 320px thumbnail preview
+- Original cover; edited cover and 320px thumbnail preview when cover work is requested
 - Original and Chinese descriptions
 - Preview clip, design frames, final screenshots, and review notes
+
+## Default Config
+
+Default settings live in `youtube-cn-subtitle-burnin/config/defaults.json`:
+
+```json
+{
+  "translation_provider": "agent",
+  "subtitle_mode": "bilingual",
+  "download_thumbnail": true,
+  "cover_edit": "not_requested",
+  "cover_mode": "none"
+}
+```
+
+In practice, the skill defaults to agent translation, bilingual subtitles, original thumbnail download, and no cover editing unless requested.
 
 ## Good Use Cases
 
@@ -102,7 +121,8 @@ Every real output should pass these checks:
 - ffmpeg / ffprobe
 - yt-dlp
 - Pillow
-- An agent model that can run the skill and handle translation, judgment, and review
+- An agent model that can run the skill and handle translation, workflow control, judgment, repair, and review
+- For local translation only: installed Local Translate skill and a working local Ollama translation model
 
 ## Maintenance
 

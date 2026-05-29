@@ -1,0 +1,10 @@
+{
+  "translation_provider": "agent",
+  "allowed_translation_providers": ["agent", "local"],
+  "subtitle_mode": "bilingual",
+  "download_thumbnail": true,
+  "cover_edit": "not_requested",
+  "cover_mode": "none",
+  "description_translation": "when_original_is_not_chinese",
+  "local_translate_script": "~/.agents/skills/local-translate/scripts/local_translate.py"
+}

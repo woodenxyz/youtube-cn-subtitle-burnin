@@ -6,11 +6,14 @@ This project stores the source and packaged artifact for the `youtube-cn-subtitl
 
 - Source skill directory: `youtube-cn-subtitle-burnin/`
 - Packaged skill artifact: `dist/youtube-cn-subtitle-burnin.skill`
+- Project state entry: `PROJECT_STATE.md`
+- Shared local install copy: `~/.agents/skills/youtube-cn-subtitle-burnin`
 - Purpose: turn YouTube videos or local video/subtitle inputs into Simplified Chinese hard-subtitled MP4 outputs, with retained subtitle files, review screenshots, and review notes.
 
 ## Working Rules
 
 - Keep changes narrowly focused on this skill. Do not reorganize the surrounding PARA repository.
+- Before maintenance work, read `PROJECT_STATE.md` after this file so current status, validation history, and handoff notes are visible.
 - Treat subtitle work as a QA workflow, not only translation.
 - Before producing or accepting a video result, read:
   - `youtube-cn-subtitle-burnin/references/workflow.md`
@@ -42,3 +45,5 @@ Do not overwrite previous MP4, SRT, or ASS outputs; create a new version instead
 ## Packaging Rule
 
 If files under `youtube-cn-subtitle-burnin/` change, refresh `dist/youtube-cn-subtitle-burnin.skill` before considering the skill updated.
+
+If the updated skill should be usable by local agents immediately, sync `youtube-cn-subtitle-burnin/` to `~/.agents/skills/youtube-cn-subtitle-burnin` and verify the two directories match.

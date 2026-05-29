@@ -22,7 +22,7 @@ class SubtitleStyle:
     stroke_width: int
 
 
-STYLE_VERSION = "subtitle-style-v1"
+STYLE_VERSION = "subtitle-style-v2"
 
 STYLES: dict[str, SubtitleStyle] = {
     "zh-only-default": SubtitleStyle(
@@ -60,33 +60,33 @@ STYLES: dict[str, SubtitleStyle] = {
     "bilingual-default": SubtitleStyle(
         name="bilingual-default",
         font="PingFang SC",
-        zh_size=35,
-        en_size=19,
-        zh_margin_v=86,
-        en_margin_v=46,
+        zh_size=38,
+        en_size=25,
+        zh_margin_v=98,
+        en_margin_v=58,
         outline=5,
         shadow=1,
         margin_l=64,
         margin_r=64,
         max_width=0.88,
-        font_scale=0.061,
-        bottom_margin=0.025,
+        font_scale=0.053,
+        bottom_margin=0.055,
         stroke_width=3,
     ),
     "bilingual-raised": SubtitleStyle(
         name="bilingual-raised",
         font="PingFang SC",
-        zh_size=35,
-        en_size=19,
-        zh_margin_v=135,
-        en_margin_v=95,
+        zh_size=38,
+        en_size=25,
+        zh_margin_v=147,
+        en_margin_v=107,
         outline=5,
         shadow=1,
         margin_l=64,
         margin_r=64,
         max_width=0.88,
-        font_scale=0.061,
-        bottom_margin=0.095,
+        font_scale=0.053,
+        bottom_margin=0.125,
         stroke_width=3,
     ),
 }

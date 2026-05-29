@@ -2,9 +2,11 @@
 
 Use this SOP for YouTube-to-Chinese-English bilingual hard subtitle work. The default output is bilingual: Chinese above English, Chinese primary, English auxiliary. The final output includes a burned MP4, reusable subtitle files, design confirmation frames, and review notes.
 
+Start every job from `config/defaults.json`. The baseline is `translation_provider: agent`, `subtitle_mode: bilingual`, `download_thumbnail: true`, `cover_edit: not_requested`, and `cover_mode: none`. Record any override in the review before acting on it.
+
 ## 1. Intake
 
-Record the URL, title, channel, duration, intended use, output preference, subtitle mode, subtitle mode reason, subtitle style profile, description language/translation status, cover edit preference, cover mode, and any glossary. If the user only gives a URL, default to Chinese-English bilingual hard subtitles for self-study/internal use, with Chinese above English and the `bilingual-default` subtitle style. Use Chinese-only only when the user asks for it, or when source subtitle check frames show burned-in English subtitles and the user did not explicitly ask to duplicate English. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; keep the original thumbnail and record `cover edit: not requested` and `cover mode: none`.
+Record the URL, title, channel, duration, intended use, output preference, translation provider, subtitle mode, subtitle mode reason, subtitle style profile, thumbnail download status, description language/translation status, cover edit preference, cover mode, and any glossary. If the user only gives a URL, default to Chinese-English bilingual hard subtitles for self-study/internal use, with Chinese above English and the `bilingual-default` subtitle style. Use Chinese-only only when the user asks for it, or when source subtitle check frames show burned-in English subtitles and the user did not explicitly ask to duplicate English. If the user asks for direct end-to-end completion and does not mention cover work, do not stop for a cover question; download and keep the original thumbnail, and record `cover edit: not_requested` and `cover mode: none`.
 
 Create a per-video workspace:
 
@@ -19,7 +21,7 @@ Create a per-video workspace:
 08-description/
 ```
 
-When downloading the video, also extract the original description and download the thumbnail:
+When downloading the video, also extract the original description and download the thumbnail. Thumbnail download is not optional by default because `download_thumbnail: true` is part of the job config:
 
 ```bash
 python3 scripts/extract_youtube_description.py 01-source/<video-id>.info.json \
@@ -27,7 +29,18 @@ python3 scripts/extract_youtube_description.py 01-source/<video-id>.info.json \
 python3 scripts/download_youtube_thumbnail.py "<youtube-url>" --out-dir 01-source --format jpg
 ```
 
-If the original description is not Chinese, translate it with the current agent model and save a Chinese version such as `08-description/<video-id>.description.zh.md`. This is a required delivery file, not optional polish. Do not continue to final delivery until the Chinese description file exists and is listed in the review. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs. Do not use baoyu-translate or external translation APIs for this step unless the user explicitly asks.
+If the original description is not Chinese, translate it with the configured translation provider and save a Chinese version such as `08-description/<video-id>.description.zh.md`. This is a required delivery file, not optional polish. Do not continue to final delivery until the Chinese description file exists and is listed in the review. Preserve proper nouns, product names, URLs, and chapter timestamps exactly where possible. Do not translate or rewrite URLs. The default provider is `agent`, so use the current agent model unless the user selected `translation_provider: local`.
+
+When `translation_provider: local` is selected for description translation, use:
+
+```bash
+python3 scripts/run_local_translate.py 08-description/<video-id>.description.original.md \
+  --format markdown \
+  --runs-dir 08-description/local-translate-runs \
+  --out 08-description/<video-id>.description.zh.md
+```
+
+Do not silently switch between agent, local, baoyu-translate, or external translation APIs. If the selected provider fails, record the failure and ask before changing provider.
 
 Keep the original thumbnail even if the user does not need cover editing. If the user wants a Chinese-subtitle cover, enter Cover Processing Mode below, create the edited cover under `07-cover/`, and keep the original and edited files listed in the review.
 
@@ -80,7 +93,7 @@ Prefer subtitle sources in this order:
 
 Save the raw source and never overwrite it. Mark automatic captions clearly because they often contain overlap, duplicated fragments, bad casing, and weak sentence boundaries.
 
-If YouTube translated Chinese captions fail with rate limits or repeated download errors, do not keep retrying the same endpoint. Record the failure, use English captions as the source, and translate with the current agent model.
+If YouTube translated Chinese captions fail with rate limits or repeated download errors, do not keep retrying the same endpoint. Record the failure, use English captions as the source, and translate through the configured translation provider.
 
 Clean the English baseline only enough to make it traceable and useful: remove noise, fix obvious ASR errors, and repair broken sentence boundaries. Do not rewrite the speaker's argument.
 
@@ -94,13 +107,11 @@ python3 scripts/prepare_youtube_transcript.py 01-source/<video-id>.en.srt \
 
 ## 3. Chinese Translation
 
-Default to translating with the current agent model. External LLM APIs and command-line translation tools are fallbacks only.
+Default to translating with the current agent model because `translation_provider: agent` is the baseline in `config/defaults.json`. Use the local model only when the job config is changed to `translation_provider: local`.
 
-Translate in numbered batches with nearby context. Maintain a glossary for names, products, commands, and technical terms. Write natural Simplified Chinese for watching, not article prose.
+Maintain a glossary for names, products, commands, and technical terms. Write natural Simplified Chinese for watching, not article prose.
 
-Use the stable `id` values from `02-transcripts/<video-id>.en.cues.json`. Do not renumber batches by hand after cleaning or repair.
-
-Use a cache file such as `03-translation/<video-id>.zh.cache.json`:
+For the default agent path, translate through stable numbered batches from the cleaned cue JSON. Use a cache file such as `03-translation/<video-id>.zh.cache.json`:
 
 ```json
 [
@@ -109,7 +120,7 @@ Use a cache file such as `03-translation/<video-id>.zh.cache.json`:
 ]
 ```
 
-Generate pending batches for agent-model translation:
+Generate pending batches:
 
 ```bash
 python3 scripts/make_translation_batches.py 02-transcripts/<video-id>.en.cues.json \
@@ -120,7 +131,7 @@ python3 scripts/make_translation_batches.py 02-transcripts/<video-id>.en.cues.js
 
 For each batch, the agent model must return JSON only, keep every `id`, and preserve product names such as Codex, ChatGPT, Claude, Claude Code, GitHub, OpenAI, Chronicle, Computer Use, and MCP. After each batch, append or update the cache before continuing. For long videos, reduce `--batch-size` or `--max-chars` before translating if a batch looks too large to check reliably.
 
-For long videos, after each translation batch is applied to the cache, spot-check a few ids from the beginning, middle, and end of that batch against the English source. Confirm that names, negation, numbers, and spoken intent remain aligned before moving to the next batch. Do not wait until the final ASS stage to discover a batch-level drift.
+After each translation batch is applied to the cache, spot-check a few ids from the beginning, middle, and end of that batch against the English source. Confirm that names, negation, numbers, and spoken intent remain aligned before moving to the next batch. Do not wait until the final ASS stage to discover a batch-level drift.
 
 Write the checked cache back to SRT:
 
@@ -130,7 +141,27 @@ python3 scripts/apply_translation_cache.py 02-transcripts/<video-id>.en.cues.jso
   --srt-out 03-translation/<video-id>.zh.v1.srt
 ```
 
-After translation, compress only unnecessary filler. Do not remove numbers, negation, conditions, caveats, or speaker intent.
+When `translation_provider: local` is selected, translate the cleaned English SRT with Local Translate:
+
+```bash
+python3 scripts/run_local_translate.py 02-transcripts/<video-id>.en.cleaned.srt \
+  --format srt \
+  --runs-dir 03-translation/local-translate-runs \
+  --out 03-translation/<video-id>.zh.v1.srt
+```
+
+The wrapper runs Local Translate, keeps the timestamped run folder, checks `failed_segments.jsonl`, blocks on any failed segment, and verifies that SRT cue numbers and timestamps did not change before copying the result to the final output path.
+
+After Local Translate finishes, inspect the run log and failure record:
+
+```text
+03-translation/local-translate-runs/<run>/run_log.json
+03-translation/local-translate-runs/<run>/failed_segments.jsonl
+```
+
+Delivery is blocked if `failed_segments.jsonl` contains any failed segment. Do not silently fall back to the current agent model or any external API. If the selected provider is unavailable or fails, record the reason and ask the user unless they already approved a fallback.
+
+After translation, spot-check the beginning, midpoint, ending, and dense speech sections against the English source. Confirm that names, negation, numbers, conditions, and speaker intent remain aligned. Compress only unnecessary filler. Do not remove numbers, negation, conditions, caveats, or speaker intent.
 
 Save the final Chinese subtitle as a versioned SRT file so it can be reused outside the burned video.
 
@@ -177,6 +208,7 @@ Use bilingual mode by default when the source subtitle state allows it. The layo
 - Chinese should normally stay one line and may use two lines when needed.
 - English should stay smaller than Chinese and visually secondary. Dense English is a warning to inspect in preview frames, not a reason to make the whole subtitle block large.
 - Total subtitle area defaults to at most three lines.
+- Treat the fixed bilingual style as calibrated for Bilibili-style readability: Chinese should be visually close to 5% of frame height, and the English auxiliary line should remain clearly readable at roughly two-thirds of the Chinese height. If preview frames look smaller than that on phone-sized playback, fix the style profile or use a documented exception before full burn.
 - If Chinese would become three lines, repair or split the Chinese SRT before generating bilingual ASS.
 - If English becomes too long or distracting in preview, first reduce English font size or clean obvious source-caption filler; only split Chinese timing when the Chinese screen itself remains natural.
 

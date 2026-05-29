@@ -28,10 +28,22 @@ Turn a YouTube video into a Chinese-English bilingual hard-subtitled MP4 by defa
 
 Always load:
 
+- `config/defaults.json` before choosing translation, subtitle, thumbnail, or cover defaults.
 - `references/workflow.md` before producing a video.
 - `references/quality-gates.md` before accepting or delivering a result.
 - `references/review-template.md` when writing the review file.
 - `references/feedback-ledger.md` when the user gives feedback about a subtitle problem.
+
+## Default Job Configuration
+
+Use `config/defaults.json` as the baseline for every new job:
+
+- `translation_provider: agent`: translate subtitles and descriptions with the current agent model by default.
+- `subtitle_mode: bilingual`: create Chinese-English subtitles by default, Chinese above English.
+- `download_thumbnail: true`: always download and retain the original YouTube thumbnail.
+- `cover_edit: not_requested` and `cover_mode: none`: do not edit the cover unless the user asks.
+
+Only switch `translation_provider` to `local` when the user explicitly asks for the local model or approves that choice. When `translation_provider: local` is used, call `scripts/run_local_translate.py` and keep its run log and failed-segment record. Do not silently switch between agent, local, or external translation methods; record the selected provider and ask before changing it after a failure.
 
 ## Non-Negotiable Rules
 
@@ -39,19 +51,20 @@ Always load:
 - Do not treat the burned MP4 as the only deliverable. The final Chinese subtitle files must be kept and listed for delivery.
 - Download and retain the original video thumbnail when downloading the video.
 - Extract and retain the original YouTube description in `08-description/`.
-- If the original description is not Chinese, create a Chinese file such as `08-description/<video-id>.description.zh.md` before delivery. Use the current agent model directly by default; do not rely on baoyu-translate or external translation APIs for this step unless the user explicitly asks. Preserve proper nouns, product names, URLs, and chapter timestamps.
-- Ask whether the video thumbnail/cover should be prepared for the Chinese-subtitled version unless the user already specified a cover preference. If the user asks for direct end-to-end completion and did not mention cover work, keep the original thumbnail only and record `cover edit: not requested`.
+- If the original description is not Chinese, create a Chinese file such as `08-description/<video-id>.description.zh.md` before delivery. Use the configured translation provider; the default is the current agent model. Preserve proper nouns, product names, URLs, and chapter timestamps.
+- Do not ask whether the original thumbnail should be downloaded; `download_thumbnail: true` is the default. Ask only if the user wants cover editing. If the user asks for direct end-to-end completion and did not mention cover work, keep the original thumbnail only and record `cover edit: not_requested`.
 - Do not burn the whole video with an unreviewed subtitle style. First create a subtitled one-minute preview clip and confirm readability, especially font size and outline. If the first minute has no subtitles, extend or move the preview until subtitles are visible.
 - Before full burn-in, extract 3-5 subtitle design confirmation frames from the preview and confirm size, line count, vertical position, and occlusion. In direct-completion mode, self-check these frames and record the result.
+- In bilingual mode, use the fixed readable scale from `bilingual-default`: Chinese should be prominent, and the English auxiliary line should stay clearly readable rather than decorative. If preview frames look smaller than Bilibili-style bilingual references on phone-sized playback, fix the profile or record a style exception before full burn.
 - When the user asks you to handle the whole job directly, self-check the preview with screenshots and continue instead of stopping for preview approval. Record that preview readability was self-checked.
-- Default to translating with the current agent model. External LLM APIs or command-line translation tools are fallbacks only, not the main path.
-- For long subtitles, translate through numbered batches from the stable `id` values in the cleaned cue JSON, verify every id is returned, save a cache after each batch, and resume from the cache if interrupted.
+- Default to translating subtitles and descriptions with the current agent model. For long subtitles, translate through stable `id` values in the cleaned cue JSON, verify every id is returned, save a cache after each batch, and resume from the cache if interrupted.
+- Use Local Translate at `~/.agents/skills/local-translate/scripts/local_translate.py` only when `translation_provider: local` is selected. When using Local Translate for SRT files, keep the run folder, check `failed_segments.jsonl`, require zero failed segments, and verify cue numbers and timestamps are unchanged before using the translated SRT.
 - Prefer semantic-screen subtitles: each screen should contain a complete sentence or closed meaning block. Avoid ending a screen with dangling words such as "所以，", "并且", "接下来要", "我要", "它会", or "然后会".
 - Do not wrap subtitles by raw character count alone. Keep Chinese phrases, product names, English phrases, code, commands, and number/unit pairs intact across line breaks.
 - Treat YouTube automatic subtitles as risky. Always check overlap before converting to ASS or burning.
 - Bilingual mode is the default for new hard-subtitled outputs: Chinese above English, Chinese primary, English auxiliary. Use Chinese-only only when the user explicitly asks for it, or when the source video already has burned-in English subtitles and the user did not explicitly ask to duplicate English.
 - In bilingual mode, use Chinese above English. Chinese may use at most two lines, English defaults to one smaller line, and the whole subtitle area defaults to at most three lines. If Chinese would require three lines, repair or split the Chinese subtitles before generating bilingual ASS.
-- If YouTube translated Chinese captions are rate-limited or unavailable, stop retrying after a small number of attempts and use English captions plus the current agent model. Record the source limitation in the review.
+- If YouTube translated Chinese captions are rate-limited or unavailable, stop retrying after a small number of attempts and use English captions plus the configured translation provider. Record the source limitation in the review.
 - Never overwrite previous MP4/SRT/ASS outputs. Create a new version and record what changed.
 
 ## Scripts
@@ -61,11 +74,13 @@ Use these helpers from the skill directory:
 ```bash
 python3 scripts/check_subtitle_quality.py path/to/subtitles.srt
 python3 scripts/check_subtitle_quality.py path/to/subtitles.ass
-python3 scripts/extract_youtube_description.py 01-source/video.info.json --out 01-source/video.description.original.md
+python3 scripts/extract_youtube_description.py 01-source/video.info.json --out 08-description/video.description.original.md
 python3 scripts/download_youtube_thumbnail.py "https://youtu.be/VIDEO_ID" --out-dir 01-source --format jpg
 python3 scripts/prepare_youtube_transcript.py 01-source/video.en.vtt --json-out 02-transcripts/video.en.cues.json --srt-out 02-transcripts/video.en.cleaned.srt
 python3 scripts/make_translation_batches.py 02-transcripts/video.en.cues.json --out-dir 03-translation/translation-batches --cache 03-translation/video.zh.cache.json --max-chars 6000
 python3 scripts/apply_translation_cache.py 02-transcripts/video.en.cues.json 03-translation/video.zh.cache.json --srt-out 03-translation/video.zh.v1.srt
+# Local model path only when translation_provider is local:
+python3 scripts/run_local_translate.py 02-transcripts/video.en.cleaned.srt --format srt --runs-dir 03-translation/local-translate-runs --out 03-translation/video.zh.v1.srt
 python3 scripts/repair_chinese_subtitles.py 03-translation/video.zh.v1.srt --out 03-translation/video.zh.v2.srt
 python3 scripts/srt_to_ass.py 03-translation/video.zh.v2.srt --out 04-subtitle-ass/video.zh.v2.ass
 python3 scripts/make_bilingual_ass.py --zh-srt 03-translation/video.zh.v2.srt --en-srt 02-transcripts/video.en.cleaned.srt --out 04-subtitle-ass/video.zh-en.v1.ass
@@ -82,7 +97,7 @@ python3 scripts/make_cover_preview.py 07-cover/video.cover.zh.v1.png --out 07-co
 python3 scripts/record_feedback.py --issue "字幕太小，看不清" --category size --fix "Add style screenshot approval before full burn" --reusable yes
 ```
 
-`extract_youtube_description.py` extracts YouTube metadata and the original description, and reports whether translation is needed. `download_youtube_thumbnail.py` downloads and converts the YouTube thumbnail for retention or cover preparation. `prepare_youtube_transcript.py` turns YouTube rolling VTT into stable cue JSON/SRT. `make_translation_batches.py` creates numbered batches for the current agent model to translate; `make_codex_translation_batches.py` remains as a compatibility alias for older workflows. `apply_translation_cache.py` writes checked translations back to SRT. `repair_chinese_subtitles.py` merges dangling endings, removes empty cues, and repairs simple overlaps. `srt_to_ass.py` creates styled Chinese-only ASS with semantic line wrapping and the fixed `zh-only-default` style unless a raised profile is chosen. `make_bilingual_ass.py` combines reviewed Chinese SRT and cleaned English SRT into bilingual ASS with Chinese above English and the fixed `bilingual-default` style. `check_subtitle_style.py` verifies that ASS files match the selected fixed style profile. `check_bilingual_alignment.py` checks Chinese/English timing overlap and writes representative samples for meaning-and-voice review. `check_subtitle_quality.py` catches overlap, empty cues, short flashes, dangling endings, bad line breaks, and bilingual layout violations. `check_ffmpeg_subtitle_support.py` verifies whether ffmpeg can burn subtitles. `make_preview_clip.py` creates a subtitled preview before full burn using the same fixed style profile. `extract_source_subtitle_frames.py` extracts source frames to check whether the original video already has burned-in subtitles. `extract_design_frames.py` extracts design confirmation frames from the subtitled preview. `inspect_video.py` verifies MP4 duration, resolution, and audio/video streams. `extract_review_frames.py` creates screenshots for visual checks. `make_cover_preview.py` creates a 320px cover preview for thumbnail-size readability checks. `record_feedback.py` appends reusable subtitle feedback to the ledger and can update the shared gates/workflow.
+`extract_youtube_description.py` extracts YouTube metadata and the original description, and reports whether translation is needed. `download_youtube_thumbnail.py` downloads and converts the YouTube thumbnail for retention or cover preparation. `prepare_youtube_transcript.py` turns YouTube rolling VTT into stable cue JSON/SRT. `make_translation_batches.py` creates numbered batches for default agent-model translation; `make_codex_translation_batches.py` remains as a compatibility alias for older workflows. `apply_translation_cache.py` writes checked translations back to SRT. `run_local_translate.py` is the optional local-model path; it calls the Local Translate script, blocks on failed segments, verifies SRT cue numbers/timestamps, and copies the checked result to the expected video job output path. `repair_chinese_subtitles.py` merges dangling endings, removes empty cues, and repairs simple overlaps. `srt_to_ass.py` creates styled Chinese-only ASS with semantic line wrapping and the fixed `zh-only-default` style unless a raised profile is chosen. `make_bilingual_ass.py` combines reviewed Chinese SRT and cleaned English SRT into bilingual ASS with Chinese above English and the fixed `bilingual-default` style. `check_subtitle_style.py` verifies that ASS files match the selected fixed style profile. `check_bilingual_alignment.py` checks Chinese/English timing overlap and writes representative samples for meaning-and-voice review. `check_subtitle_quality.py` catches overlap, empty cues, short flashes, dangling endings, bad line breaks, and bilingual layout violations. `check_ffmpeg_subtitle_support.py` verifies whether ffmpeg can burn subtitles. `make_preview_clip.py` creates a subtitled preview before full burn using the same fixed style profile. `extract_source_subtitle_frames.py` extracts source frames to check whether the original video already has burned-in subtitles. `extract_design_frames.py` extracts design confirmation frames from the subtitled preview. `inspect_video.py` verifies MP4 duration, resolution, and audio/video streams. `extract_review_frames.py` creates screenshots for visual checks. `make_cover_preview.py` creates a 320px cover preview for thumbnail-size readability checks. `record_feedback.py` appends reusable subtitle feedback to the ledger and can update the shared gates/workflow.
 
 If `check_ffmpeg_subtitle_support.py` reports that no checked ffmpeg can burn subtitles with native filters, use `burn_subtitles_pil.py` for the full MP4 instead of creating a one-off renderer inside the project workspace.
 
